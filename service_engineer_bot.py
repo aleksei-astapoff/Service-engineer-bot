@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from constant import ALOWED_UPDATES
 from handlers.user import user_router
+from handlers.user_group import user_group_router
 from commands_bot.commands_bot_list import user_list
 
 load_dotenv()
@@ -16,10 +17,10 @@ load_dotenv()
 bot = Bot(token=os.getenv('BOT_TOKEN'))
 dp = Dispatcher()
 
-dp.include_routers(user_router)
+dp.include_routers(user_router, user_group_router)
 
 
-async def main():  # noqa: E999
+async def main():
     """Запуск бота"""
 
     await bot.delete_webhook(drop_pending_updates=True)

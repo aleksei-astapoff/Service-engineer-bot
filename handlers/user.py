@@ -28,7 +28,7 @@ async def menu_cmd(message: types.Message):
 async def about_cmd(message: types.Message):
     """Сообщение о структуре бота"""
 
-    await message.answer('О нас') 
+    await message.answer('О нас')
 
 
 @user_router.message(
