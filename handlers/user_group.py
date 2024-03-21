@@ -1,9 +1,12 @@
 from string import punctuation
-from aiogram import F, types, Router
+from aiogram import types, Router
 
 from constant import RESTRICTED_WORDS
+from filters.chat_type import ChatTypeFilter
 
 user_group_router = Router()
+
+user_group_router.message.filter(ChatTypeFilter(['group', 'supergroup']))
 
 
 def clean_text(text: str):
@@ -17,7 +20,7 @@ async def cleaner(message: types.Message):
         clean_text(message.text.lower()
                    ).split()):
         await message.answer(
-            f'{message.from_user.first_name}, еще раз и получишь в глаз'
+            f'{message.from_user.first_name}, ведите себя прилично!'
         )
         await message.delete()
-        #await message.chat.ban(message.from_user.id)
+        # await message.chat.ban(message.from_user.id)

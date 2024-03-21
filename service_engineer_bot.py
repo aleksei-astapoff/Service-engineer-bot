@@ -17,7 +17,7 @@ load_dotenv()
 bot = Bot(token=os.getenv('BOT_TOKEN'))
 dp = Dispatcher()
 
-dp.include_routers(user_router, user_group_router)
+dp.include_routers(user_router, user_group_router,)
 
 
 async def main():
