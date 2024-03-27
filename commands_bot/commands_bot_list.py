@@ -1,9 +1,15 @@
 from aiogram.types import BotCommand
 
 
-user_list = [
-    BotCommand(command='menu', description='Выберите действие.'),
+command_list = [
+    BotCommand(command='menu', description='Главное меню.'),
     BotCommand(command='about', description='О нас'),
-    BotCommand(command='error_code', description='Коды ошибок'),
-    BotCommand(command='service', description='Услуги сервиса'),
+    BotCommand(command='client_service', description='Услуги клиентам'),
+    BotCommand(command='worker', description='Сотрудникам'),
+    # BotCommand(command='error_code', description='Коды ошибок'),
+]
+
+command_fsm_client = [
+    BotCommand(command='cancel', description='Отмена'),
+    BotCommand(command='back', description='Назад'),
 ]
