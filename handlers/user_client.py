@@ -214,7 +214,7 @@ async def phone_number_manual(message: types.Message, state: FSMContext):
     )
     await state.set_state(RequestForService.phone_number)
 
-    
+
 @user_client_router.message(RequestForService.phone_number)
 async def phone_number(message: types.Message, state: FSMContext):
     """Обработка запроса клиента сохранение номера телефона."""
