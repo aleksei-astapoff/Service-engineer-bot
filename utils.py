@@ -1,6 +1,16 @@
-from aiogram import types
+import os
+from aiogram import types, Bot
 from commands_bot.commands_bot_list import command_list
-from constant import bot_telegram
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+bot_telegram = Bot(token=os.getenv('BOT_TOKEN'))
+
+
+def get_button_text(keyboard):
+    return [button.text for row in keyboard.keyboard for button in row]
 
 
 async def reset_to_start_command(message: types.Message):

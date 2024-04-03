@@ -36,8 +36,6 @@ client_keyboard = ReplyKeyboardMarkup(
                 text='Консультация по оборудованию',
                 # request_poll=KeyboardButtonPollType()
             ),
-            # KeyboardButton(text='Отправить номер 📞', request_contact=True),
-            # KeyboardButton(text='Местоположение 🗺️', request_location=True),
         ],
     ],
     resize_keyboard=True,

@@ -1,14 +1,11 @@
-import os
-
-from aiogram import Bot
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 ALOWED_UPDATES = ['message, edited_message']
 
 RESTRICTED_WORDS = {'толстяк', 'кабан', 'хомяк', }
 
-bot_telegram = Bot(token=os.getenv('BOT_TOKEN'))
-
+ABOUT = '''
+Бот предназначен для помощи сервис инженерам в расшифровке кодов ошибок,
+а также предоставления справочной информации.
+Для клиентов предусмотрена возможность оформить предзаказ на услугу
+или консультацию.
+'''

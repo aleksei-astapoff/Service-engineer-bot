@@ -4,7 +4,6 @@ from aiogram.filters import CommandStart, Command, or_f
 from filters.chat_type import ChatTypeFilter
 
 from keyboard import replay
-from commands_bot.commands_bot_list import command_list
 from utils import reset_to_start_command
 # from constant import bot
 
@@ -37,7 +36,9 @@ async def menu_cmd(message: types.Message):
 
 @user_router.message(
         or_f(Command('about'),
-             ((F.text.lower().contains('о продукте') | (F.text.lower().contains('умеешь') | ((F.text.lower().contains('можешь')))))))
+             ((F.text.lower().contains('о продукте') | (
+                 F.text.lower().contains('умеешь') | (
+                     (F.text.lower().contains('можешь')))))))
     )
 async def about_cmd(message: types.Message):
     """Сообщение о структуре бота"""

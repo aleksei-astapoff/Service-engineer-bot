@@ -10,8 +10,7 @@ from aiogram.fsm.state import State, StatesGroup
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay
 from commands_bot.commands_bot_list import command_fsm_client
-from constant import bot_telegram
-from utils import reset_to_start_command
+from utils import reset_to_start_command, bot_telegram, get_button_text
 
 load_dotenv()
 
@@ -117,10 +116,16 @@ async def back_cmd(message: types.Message, state: FSMContext):
 async def type_service(message: types.Message, state: FSMContext):
     """Обработка запроса клиента тип услуги."""
 
-    await state.update_data(type_service=message.text)
-    await message.answer('Выберите тип установки.',
-                         reply_markup=replay.client_service_keyboard)
-    await state.set_state(RequestForService.type_machine)
+    if message.text not in get_button_text(replay.client_keyboard):
+        await message.answer(
+            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
+             'или Меню для выхода')
+            )
+    else:
+        await state.update_data(type_service=message.text)
+        await message.answer('Выберите тип установки.',
+                             reply_markup=replay.client_service_keyboard)
+        await state.set_state(RequestForService.type_machine)
 
 
 @user_client_router.message(RequestForService.type_machine,
@@ -128,6 +133,7 @@ async def type_service(message: types.Message, state: FSMContext):
 async def type_machine_other(message: types.Message, state: FSMContext):
     """Обработка запроса клиента модель оборудования другог типа."""
 
+    await state.update_data(other_machine_type=True)
     await message.answer('Введите тип установки.',
                          reply_markup=replay.del_keyboard)
 
@@ -136,10 +142,18 @@ async def type_machine_other(message: types.Message, state: FSMContext):
 async def type_machine(message: types.Message, state: FSMContext):
     """Обработка запроса клиента сохранение типа оборудования."""
 
-    await state.update_data(type_machine=message.text)
-    await message.answer('Введите модель оборудования. Например: SDMO',
-                         reply_markup=replay.del_keyboard)
-    await state.set_state(RequestForService.model_machine)
+    data = await state.get_data()
+    if ((message.text not in get_button_text(replay.client_service_keyboard)
+         ) and ('other_machine_type' not in data)):
+        await message.answer(
+            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
+             'или Меню для выхода')
+            )
+    else:
+        await state.update_data(type_machine=message.text)
+        await message.answer('Введите модель оборудования. Например: SDMO',
+                             reply_markup=replay.del_keyboard)
+        await state.set_state(RequestForService.model_machine)
 
 
 @user_client_router.message(RequestForService.model_machine, F.text)
