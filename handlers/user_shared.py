@@ -5,7 +5,7 @@ from filters.chat_type import ChatTypeFilter
 
 from keyboard import replay
 from utils import reset_to_start_command
-# from constant import bot
+from constant import ABOUT
 
 user_router = Router()
 
@@ -44,4 +44,4 @@ async def about_cmd(message: types.Message):
     """Сообщение о структуре бота"""
 
     await reset_to_start_command(message)
-    await message.answer('Описание возможностей бота в разработке')
+    await message.answer(ABOUT)

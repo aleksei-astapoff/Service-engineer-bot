@@ -9,7 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay
-from commands_bot.commands_bot_list import command_fsm_client
+from commands_bot.commands_bot_list import command_fsm
 from utils import reset_to_start_command, bot_telegram, get_button_text
 
 load_dotenv()
@@ -34,8 +34,8 @@ class RequestForService(StatesGroup):
         'RequestForService:type_service': 'Выберите тип услуги',
         'RequestForService:type_machine': 'Введите тип оборудования',
         'RequestForService:model_machine': 'Введите модель оборудования',
-        'RequestForService:serial_number': 'Введите серийный номер оборудования',
-        'RequestForService:image': 'Добавьте фото оборудования не более 5 изображений',
+        'RequestForService:serial_number': 'Введите серийный номер оборудования', # noqa
+        'RequestForService:image': 'Добавьте фото оборудования не более 5 изображений', # noqa
         'RequestForService:phone_number': 'Введите ваш номер телефона',
         'RequestForService:addreess_machine': 'Введите ваш адрес',
     }
@@ -53,7 +53,7 @@ async def service_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса клиента."""
 
     await bot_telegram.set_my_commands(
-        commands=command_fsm_client,
+        commands=command_fsm,
         scope=types.BotCommandScopeChat(chat_id=message.chat.id)
         )
     await state.set_state(RequestForService.type_service)
@@ -267,11 +267,11 @@ async def addreess_machine(message: types.Message, state: FSMContext):
     data = await state.get_data()
     await message.answer(str(data))
     await message.bot.send_message(
-        os.getenv('TEST_CHAT_ID'),
+        os.getenv('MANAGER_CHAT_ID'),
         'Заявка на обработку')
     photos = data.get('image', [])
     for photo in photos:
-        await message.bot.send_photo(os.getenv('TEST_CHAT_ID'), photo)
+        await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
 
     application = f'''
     Профиль: @{data.get('telegram_profile_id')}
@@ -284,6 +284,6 @@ async def addreess_machine(message: types.Message, state: FSMContext):
     Серийный номер: {data.get('serial_number')}
     '''
 
-    await message.bot.send_message(os.getenv('TEST_CHAT_ID'), application)
+    await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
     await state.clear()
     await reset_to_start_command(message)

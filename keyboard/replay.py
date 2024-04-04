@@ -1,4 +1,4 @@
-from aiogram.types import (KeyboardButton, KeyboardButtonPollType,
+from aiogram.types import (KeyboardButton, KeyboardButtonPollType, # noqa
                            ReplyKeyboardMarkup, ReplyKeyboardRemove)
 
 
@@ -74,4 +74,40 @@ phone_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True,
     input_field_placeholder='Форма ввода +7 999 999 99 99',
+)
+
+worker_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='Коды ошибок'),
+            KeyboardButton(text='ГОСТ'),
+        ]
+    ],
+    resize_keyboard=True,
+)
+
+gost_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='Данных нет'),
+        ]
+    ],
+)
+
+equiment_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='Панель управления'),
+            KeyboardButton(text='Двигатель'),
+        ]
+    ],
+    resize_keyboard=True,
+)
+
+model_equiment = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+
+        ]
+    ]
 )
