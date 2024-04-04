@@ -1,33 +1,34 @@
 import asyncio
-import os
 
-from aiogram import Bot, Dispatcher, types
-
+from aiogram import Dispatcher, types
 
 from dotenv import load_dotenv
 
 from constant import ALOWED_UPDATES
-from handlers.user import user_router
+from handlers.user_shared import user_router
+from handlers.user_client import user_client_router
+from handlers.user_worker import user_worker_router
 from handlers.user_group import user_group_router
-from commands_bot.commands_bot_list import user_list
+from commands_bot.commands_bot_list import command_list
+from utils import bot_telegram
 
 load_dotenv()
 
 
-bot = Bot(token=os.getenv('BOT_TOKEN'))
 dp = Dispatcher()
 
-dp.include_routers(user_router, user_group_router,)
+dp.include_routers(user_router, user_client_router, user_worker_router,
+                   user_group_router,)
 
 
 async def main():
     """Запуск бота"""
 
-    await bot.delete_webhook(drop_pending_updates=True)
-    await bot.set_my_commands(
-        commands=user_list, scope=types.BotCommandScopeAllPrivateChats()
+    await bot_telegram.delete_webhook(drop_pending_updates=True)
+    await bot_telegram.set_my_commands(
+        commands=command_list, scope=types.BotCommandScopeAllPrivateChats()
         )
-    await dp.start_polling(bot, allowed_updates=ALOWED_UPDATES)
+    await dp.start_polling(bot_telegram, allowed_updates=ALOWED_UPDATES)
 
 
 asyncio.run(main())
