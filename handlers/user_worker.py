@@ -47,9 +47,12 @@ async def error_code_cmd(message: types.Message, state: FSMContext):
         )
     await state.set_state(RequestForHelpWorker.tupe_request)
     await message.answer(
-        'Выберете тип запроса. Для выхода воспльзутесь Меню',
-        reply_markup=replay.worker_keyboard
+        # 'Выберете тип запроса. Для выхода воспльзутесь Меню',
+        # reply_markup=replay.worker_keyboard
+        'Данный раздел находится в разработке. Возвращаемся на главную.'
         )
+    await state.clear()
+    await reset_to_start_command(message)
 
 
 @user_worker_router.message(StateFilter('*'), Command('cancel'))
@@ -117,7 +120,7 @@ async def type_service(message: types.Message, state: FSMContext):
         await state.set_state(RequestForHelpWorker.gost_step)
     else:
         await state.update_data(tupe_request=message.text)
-        await message.answer('Выберите тип установки.',
+        await message.answer('Выберите тип оборудования.',
                              reply_markup=replay.equiment_keyboard)
         await state.set_state(RequestForHelpWorker.tupe_equiment)
 
@@ -142,8 +145,8 @@ async def type_equiment(message: types.Message, state: FSMContext):
              'или Меню для выхода')
             )
     else:
-        await message.answer('Выберите модель оборудования.')
         await state.update_data(tupe_equiment=message.text)
+        await message.answer('Выберите модель оборудования.')
         keyboard = get_model_keyboard(message.text)
 
         await message.answer(reply_markup=keyboard)

@@ -265,7 +265,7 @@ async def addreess_machine(message: types.Message, state: FSMContext):
     await message.answer('Заявка будет обработана',
                          reply_markup=replay.start_keyboard)
     data = await state.get_data()
-    await message.answer(str(data))
+    # await message.answer(str(data))
     await message.bot.send_message(
         os.getenv('MANAGER_CHAT_ID'),
         'Заявка на обработку')
