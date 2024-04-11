@@ -247,7 +247,8 @@ async def phone_number(message: types.Message, state: FSMContext):
     await state.update_data(phone_number=phone_number,
                             fist_name=message.from_user.first_name,
                             last_name=message.from_user.last_name,
-                            telegram_profile_id=message.from_user.username,
+                            telegram_profile_username=message.from_user.username,
+                            telegram_profile_id=message.from_user.id,
                             )
     await message.answer(
         'Введите адрес оборудования.Форма ввода: Город, улица, дом',
