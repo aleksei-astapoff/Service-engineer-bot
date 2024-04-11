@@ -5,7 +5,7 @@ from aiogram import Dispatcher, types
 from dotenv import load_dotenv
 
 from constant import ALOWED_UPDATES
-from handlers.user_shared import user_router
+from handlers.user_shared import user_shared
 from handlers.user_client import user_client_router
 from handlers.user_worker import user_worker_router
 from handlers.user_group import user_group_router
@@ -17,8 +17,8 @@ load_dotenv()
 
 dp = Dispatcher()
 
-dp.include_routers(user_router, user_client_router, user_worker_router,
-                   user_group_router,)
+dp.include_routers(user_client_router, user_worker_router,
+                   user_group_router, user_shared)
 
 
 async def main():

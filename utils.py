@@ -20,3 +20,11 @@ async def reset_to_start_command(message: types.Message):
             commands=command_list,
             scope=types.BotCommandScopeChat(chat_id=message.chat.id)
         )
+
+
+def get_model_keyboard(type_equiment):
+    """Генерация клавиатуры для выбора модели оборудования."""
+
+    if type_equiment == 'Панель управления':
+        pass
+    pass

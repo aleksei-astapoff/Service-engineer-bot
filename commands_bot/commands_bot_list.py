@@ -9,7 +9,7 @@ command_list = [
     # BotCommand(command='error_code', description='Коды ошибок'),
 ]
 
-command_fsm_client = [
+command_fsm = [
     BotCommand(command='cancel', description='Отмена'),
     BotCommand(command='back', description='Назад'),
 ]

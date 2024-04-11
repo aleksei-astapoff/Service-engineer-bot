@@ -5,14 +5,14 @@ from filters.chat_type import ChatTypeFilter
 
 from keyboard import replay
 from utils import reset_to_start_command
-# from constant import bot
+from constant import ABOUT
 
-user_router = Router()
+user_shared = Router()
 
-user_router.message.filter(ChatTypeFilter(['private']))
+user_shared.message.filter(ChatTypeFilter(['private']))
 
 
-@user_router.message(CommandStart())
+@user_shared.message(CommandStart())
 async def start_cmd(message: types.Message):
     """Команда /start"""
 
@@ -25,7 +25,7 @@ async def start_cmd(message: types.Message):
     )
 
 
-@user_router.message(or_f(Command('menu'), (F.text.lower().contains('меню'))))
+@user_shared.message(or_f(Command('menu'), (F.text.lower().contains('меню'))))
 async def menu_cmd(message: types.Message):
     """Вызов основного меню бота"""
 
@@ -34,7 +34,7 @@ async def menu_cmd(message: types.Message):
     )
 
 
-@user_router.message(
+@user_shared.message(
         or_f(Command('about'),
              ((F.text.lower().contains('о продукте') | (
                  F.text.lower().contains('умеешь') | (
@@ -44,4 +44,11 @@ async def about_cmd(message: types.Message):
     """Сообщение о структуре бота"""
 
     await reset_to_start_command(message)
-    await message.answer('Описание возможностей бота в разработке')
+    await message.answer(ABOUT)
+
+
+@user_shared.message(F.text)
+async def unknown_text_cmd(message: types.Message):
+    await message.answer(
+        f'{message.from_user.first_name} '
+        f'воспользуйтесь кнопками клавиатуры или меню.')
