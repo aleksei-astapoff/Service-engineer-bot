@@ -26,7 +26,7 @@ class Order(Base):
     image: Mapped[str] = mapped_column(List(), nullable=True)
 
     client = relationship(
-        "Client", 
+        "Client",
         back_populates="orders"
     )
 
@@ -38,6 +38,6 @@ class Client(Base):
     telegram_profile_id: Mapped[int] = mapped_column(Integer(50), nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=True)
     user_name: Mapped[str] = mapped_column(String(150), nullable=True)
-    phone_number: Mapped[str] = mapped_column(String(), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(11), nullable=True)
 
     orders = relationship("Order", back_populates="client")

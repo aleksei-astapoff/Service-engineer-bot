@@ -11,6 +11,7 @@ from filters.chat_type import ChatTypeFilter
 from keyboard import replay
 from commands_bot.commands_bot_list import command_fsm
 from utils import reset_to_start_command, bot_telegram, get_button_text
+from validators.validator import validator_phone_number
 
 load_dotenv()
 
@@ -241,6 +242,12 @@ async def phone_number(message: types.Message, state: FSMContext):
         await message.answer(
             ('Пожалуйста, отправьте ваш номер телефона текстом '
              'или используйте кнопку для отправки контакта.'),
+            reply_markup=replay.phone_keyboard)
+        return
+    phone_number = validator_phone_number(phone_number)
+    if not phone_number:
+        await message.answer(
+            ('Введен не валидный номер телефона. Повторите ввод.'),
             reply_markup=replay.phone_keyboard)
         return
 
