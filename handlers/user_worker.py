@@ -31,6 +31,7 @@ class RequestForHelpWorker(StatesGroup):
         'RequestForHelpWorker:model_equiment': 'Выберите модель оборудования',
         'RequestForHelpWorker:code_error': 'Введите код ошибки',
         'RequestForHelpWorker:fmi_number': 'Введите FMI номер ошибки',
+        'RequestForHelpWorker:gost_step': 'Выберите ГОСТ',
     }
 
 
@@ -79,7 +80,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state == RequestForHelpWorker.tupe_request:
         await message.answer(
-            'Предидущего шага нет. Воспользуйтесь меню: "Отмена"'
+            'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
             )
         return
     previous = None
@@ -88,17 +89,21 @@ async def back_cmd(message: types.Message, state: FSMContext):
             await state.set_state(previous)
             if previous.state == 'RequestForHelpWorker:tupe_request':
                 keyboard = replay.worker_keyboard
+            elif previous.state == 'RequestForHelpWorker:gost_step':
+                keyboard = replay.gost_keyboard
             elif previous.state == 'RequestForHelpWorker:tupe_equiment':
-                keyboard = replay.equiment_keyboard
-            elif previous.state == 'RequestForHelpWorker:image':
-                keyboard = replay.image_keyboard
-            elif previous.state == 'RequestForHelpWorker:phone_number':
-                keyboard = replay.phone_keyboard
+                keyboard = replay.tupe_equiment_keyboard
+            elif previous.state == 'RequestForHelpWorker:model_equiment':
+                keyboard = replay.model_equiment_keyboard
+            elif previous.state == 'RequestForHelpWorker:code_error':
+                keyboard = replay.del_keyboard
+            elif previous.state == 'RequestForHelpWorker:fmi_number':
+                keyboard = replay.del_keyboard
             else:
                 keyboard = replay.del_keyboard
             await message.answer(
                 f'Вы вернулись к прошлому шагу: '
-                f' {RequestForHelpWorker.text[previous.state]}',
+                f'{RequestForHelpWorker.text[previous.state]}',
                 reply_markup=keyboard
             )
         previous = step
@@ -106,7 +111,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
 
 @user_worker_router.message(RequestForHelpWorker.tupe_request, F.text)
 async def type_service(message: types.Message, state: FSMContext):
-    """Обработка запроса клиента тип услуги."""
+    """Обработка запроса сотрудника, тип запроса."""
 
     if message.text not in get_button_text(replay.worker_keyboard):
         await message.answer(

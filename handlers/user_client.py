@@ -88,7 +88,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state == RequestForService.type_service:
         await message.answer(
-            'Предидущего шага нет. Воспользуйтесь меню: "Отмена"'
+            'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
             )
         return
     previous = None
@@ -107,7 +107,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
                 keyboard = replay.del_keyboard
             await message.answer(
                 f'Вы вернулись к прошлому шагу: '
-                f' {RequestForService.text[previous.state]}',
+                f'{RequestForService.text[previous.state]}',
                 reply_markup=keyboard
             )
         previous = step
@@ -251,12 +251,13 @@ async def phone_number(message: types.Message, state: FSMContext):
             reply_markup=replay.phone_keyboard)
         return
 
-    await state.update_data(phone_number=phone_number,
-                            fist_name=message.from_user.first_name,
-                            last_name=message.from_user.last_name,
-                            telegram_profile_username=message.from_user.username,
-                            telegram_profile_id=message.from_user.id,
-                            )
+    await state.update_data(
+        phone_number=phone_number,
+        fist_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+        telegram_profile_username=message.from_user.username,
+        telegram_profile_id=message.from_user.id,
+    )
     await message.answer(
         'Введите адрес оборудования.Форма ввода: Город, улица, дом',
         reply_markup=replay.del_keyboard,
@@ -273,7 +274,7 @@ async def addreess_machine(message: types.Message, state: FSMContext):
     await message.answer('Заявка будет обработана',
                          reply_markup=replay.start_keyboard)
     data = await state.get_data()
-    # await message.answer(str(data))
+    await message.answer(str(data))
     await message.bot.send_message(
         os.getenv('MANAGER_CHAT_ID'),
         'Заявка на обработку')
