@@ -1,30 +1,31 @@
-from ast import List
-
-from sqlalchemy import Date, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-class Base(DeclarativeBase):
-    pass
+class BaseClient(DeclarativeBase):
+    """Базовая модель базы данных, заказы клиентов."""
+
+    creation: Mapped[Date] = mapped_column(DateTime(), default=func.now())
 
 
-class Order(Base):
+class Order(BaseClient):
+    """Модель базы данных, заказы клиентов."""
+
     __tablename__ = 'orders'
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
     )
-    date_creation = mapped_column(Date, nullable=False)
     client_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('clients.id'), nullable=False
-        ),
+        )
 
     address: Mapped[str] = mapped_column(String(150), nullable=False)
     type_service: Mapped[str] = mapped_column(String(50), nullable=False)
     type_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     model_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
-    image: Mapped[str] = mapped_column(List(), nullable=True)
+    image: Mapped[str] = mapped_column(String(250))
 
     client = relationship(
         "Client",
@@ -32,7 +33,9 @@ class Order(Base):
     )
 
 
-class Client(Base):
+class Client(BaseClient):
+    """Модель базы данных, клиенты."""
+
     __tablename__ = 'clients'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
