@@ -10,6 +10,7 @@
 
 ### Технологии:
 
+|                            |                              |
 |----------------------------|------------------------------|
 | aiofiles==23.2.1           | frozenlist==1.4.1            |
 | aiogram==3.4.1             | greenlet==3.0.3              |
@@ -21,5 +22,5 @@
 | asyncpg==0.29.0            | python-dotenv==1.0.1         |
 | attrs==23.2.0              | SQLAlchemy==2.0.29           |
 | certifi==2024.2.2          | sqldictalchem==0.1.1         |
-|  yarl==1.9.4               | typing_extensions==4.10.0    |
+| yarl==1.9.4                | typing_extensions==4.10.0    |
 |                            |                              |
