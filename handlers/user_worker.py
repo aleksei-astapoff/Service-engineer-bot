@@ -52,8 +52,11 @@ async def error_code_cmd(message: types.Message, state: FSMContext):
         # reply_markup=replay.worker_keyboard
         'Данный раздел находится в разработке. Возвращаемся на главную.'
         )
-    await state.clear()
-    await reset_to_start_command(message)
+    await state.set_state(RequestForHelpWorker.tupe_request)
+    await message.answer(
+        'Выберете тип запроса. Для выхода воспльзутесь Меню',
+        reply_markup=replay.worker_keyboard
+    )
 
 
 @user_worker_router.message(StateFilter('*'), Command('cancel'))

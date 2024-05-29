@@ -53,6 +53,9 @@ class Client(BaseClient):
 
     orders = relationship("Order", back_populates="client")
 
+    def __repr__(self) -> str:
+        return self.full_name
+
 
 class Photo(BaseClient):
     """Модель базы данных, фото."""
@@ -64,7 +67,11 @@ class Photo(BaseClient):
         Integer, ForeignKey('orders.id'), nullable=False
         )
     file_path = mapped_column(String(250), nullable=False)
+
     order = relationship(
         "Order",
         back_populates="images"
     )
+
+    def __repr__(self) -> str:
+        return self.file_path

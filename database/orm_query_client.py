@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 
-from database.models import Order, Client, Photo
+from database.models_client import Order, Client, Photo
 from constant import MEDIA_ROOT_DIR
 from utils import bot_telegram
 from dotenv import load_dotenv

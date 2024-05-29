@@ -19,9 +19,9 @@ load_dotenv()
 
 dp = Dispatcher()
 
-# user_client_router.message.middleware(
-#     DatabaseSessionMiddleware(session_pool=session_maker)
-# )
+user_client_router.message.middleware(
+    DatabaseSessionMiddleware(session_pool=session_maker)
+)
 
 dp.include_routers(user_client_router, user_worker_router,
                    user_group_router, user_shared)
@@ -49,7 +49,7 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
-    dp.update.middleware(DatabaseSessionMiddleware(session_pool=session_maker))
+    # dp.update.middleware(DatabaseSessionMiddleware(session_pool=session_maker))
 
     await bot_telegram.delete_webhook(drop_pending_updates=True)
     await bot_telegram.set_my_commands(
