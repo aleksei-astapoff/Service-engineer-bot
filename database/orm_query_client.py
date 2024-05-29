@@ -32,7 +32,11 @@ async def save_photos(photos, client_id, order_id, address_machine):
         for index, photo_id in enumerate(photos):
             try:
                 file_info = await bot_telegram.get_file(photo_id)
-                file_path = f'https://api.telegram.org/file/bot{os.getenv("BOT_TOKEN")}/{file_info.file_path}'
+                file_path = (
+                        'https://api.telegram.org/file/bot'
+                        + os.getenv("BOT_TOKEN") +
+                        '/' + file_info.file_path
+                    )
                 async with session.get(file_path) as response:
                     if response.status == 200:
                         filename = f"{address_machine}_photo_{index+1}.jpg"
@@ -42,7 +46,10 @@ async def save_photos(photos, client_id, order_id, address_machine):
                             await file.write(content)
                         image_paths.append(filepath)
                     else:
-                        print(f"Ошибка загрузки с сервера, фото {photo_id}: код статуса HTTP: {response.status}")
+                        print(
+                            'Ошибка загрузки сервера, фото: '
+                            + photo_id + 'код статуса HTTP: '
+                            + response.status)
             except Exception as exc:
                 print(f"Ошибка загрузки фото {photo_id}: {exc}")
     return image_paths, order_dir
@@ -101,22 +108,27 @@ async def orm_add_order(session: AsyncSession, data: dict):
         type_machine=data['type_machine'],
         model_machine=data['model_machine'],
         serial_number=data['serial_number'],
-        image='',
+        image='Нет изображений',
         address_machine=data['address_machine'],
     )
     session.add(order)
     await session.commit()
     await session.refresh(order)
 
-    photos = data['image']
-    image_paths, order_dir = await save_photos(photos, client.id, order.id, order.address_machine)
-    order_dir_str = order_dir + '/ Загружено фото: ' + str(len(image_paths))
+    if data.get('image') is not None:
+        photos = data['image']
+        image_paths, order_dir = await save_photos(
+            photos, client.id, order.id, order.address_machine
+            )
+        order_dir_str = (
+            order_dir + '/ Загружено фото: ' + str(len(image_paths))
+            )
 
-    order.image = order_dir_str
-    session.add(order)
+        order.image = order_dir_str
+        session.add(order)
 
-    for image_path in image_paths:
-        photo = Photo(order_id=order.id, file_path=image_path)
-        session.add(photo)
+        for image_path in image_paths:
+            photo = Photo(order_id=order.id, file_path=image_path)
+            session.add(photo)
 
     await session.commit()

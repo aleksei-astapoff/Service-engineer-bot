@@ -15,7 +15,7 @@ bot_telegram = Bot(token=os.getenv('BOT_TOKEN'))
 
 
 def current_time():
-    return datetime.now(TIME_ZONE)
+    return datetime.now(TIME_ZONE).replace(microsecond=0)
 
 
 def get_button_text(keyboard):

@@ -1,4 +1,4 @@
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from utils import current_time
@@ -10,6 +10,8 @@ class BaseClient(DeclarativeBase):
     __abstract__ = True
 
     creation: Mapped[Date] = mapped_column(DateTime(), default=current_time)
+    # creation: Mapped[Date] = mapped_column(
+    # DateTime(timezone=True), server_default=func.timezone('Europe/Moscow', func.now()))
 
 
 class Order(BaseClient):
@@ -29,7 +31,7 @@ class Order(BaseClient):
     type_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     model_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
-    image: Mapped[str] = mapped_column(String(250))
+    image: Mapped[str] = mapped_column(String(250), nullable=True)
 
     client = relationship(
         "Client",

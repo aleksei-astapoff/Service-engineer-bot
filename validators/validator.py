@@ -7,4 +7,4 @@ def validator_phone_number(phone_number):
         phone_number = phone_number[1:]
     if not phone_number.isdigit() or len(phone_number) != 11:
         return False
-    return '+' + phone_number
+    return phone_number
