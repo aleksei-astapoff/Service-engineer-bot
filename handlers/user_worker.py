@@ -18,8 +18,8 @@ class RequestForHelpWorker(StatesGroup):
     """Заказ Услуги"""
 
     tupe_request = State()
-    tupe_equiment = State()
-    model_equiment = State()
+    tupe_equipment = State()
+    model_equipment = State()
     code_error = State()
     fmi_number = State()
     gost_step = State()
@@ -27,8 +27,8 @@ class RequestForHelpWorker(StatesGroup):
 
     text = {
         'RequestForHelpWorker:tupe_request': 'Выберите тип запроса',
-        'RequestForHelpWorker:tupe_equiment': 'Выберите тип оборудования',
-        'RequestForHelpWorker:model_equiment': 'Выберите модель оборудования',
+        'RequestForHelpWorker:tupe_equipment': 'Выберите тип оборудования',
+        'RequestForHelpWorker:model_equipment': 'Выберите модель оборудования',
         'RequestForHelpWorker:code_error': 'Введите код ошибки',
         'RequestForHelpWorker:fmi_number': 'Введите FMI номер ошибки',
         'RequestForHelpWorker:gost_step': 'Выберите ГОСТ',
@@ -94,10 +94,10 @@ async def back_cmd(message: types.Message, state: FSMContext):
                 keyboard = replay.worker_keyboard
             elif previous.state == 'RequestForHelpWorker:gost_step':
                 keyboard = replay.gost_keyboard
-            elif previous.state == 'RequestForHelpWorker:tupe_equiment':
-                keyboard = replay.tupe_equiment_keyboard
-            elif previous.state == 'RequestForHelpWorker:model_equiment':
-                keyboard = replay.model_equiment_keyboard
+            elif previous.state == 'RequestForHelpWorker:tupe_equipment':
+                keyboard = replay.tupe_equipment_keyboard
+            elif previous.state == 'RequestForHelpWorker:model_equipment':
+                keyboard = replay.model_equipment_keyboard
             elif previous.state == 'RequestForHelpWorker:code_error':
                 keyboard = replay.del_keyboard
             elif previous.state == 'RequestForHelpWorker:fmi_number':
@@ -129,8 +129,8 @@ async def type_service(message: types.Message, state: FSMContext):
     else:
         await state.update_data(tupe_request=message.text)
         await message.answer('Выберите тип оборудования.',
-                             reply_markup=replay.equiment_keyboard)
-        await state.set_state(RequestForHelpWorker.tupe_equiment)
+                             reply_markup=replay.equipment_keyboard)
+        await state.set_state(RequestForHelpWorker.tupe_equipment)
 
 
 @user_worker_router.message(RequestForHelpWorker.gost_step, F.text)
@@ -143,19 +143,19 @@ async def gost(message: types.Message, state: FSMContext):
     await state.set_state(RequestForHelpWorker.tupe_request)
 
 
-@user_worker_router.message(RequestForHelpWorker.tupe_equiment, F.text)
-async def type_equiment(message: types.Message, state: FSMContext):
+@user_worker_router.message(RequestForHelpWorker.tupe_equipment, F.text)
+async def type_equipment(message: types.Message, state: FSMContext):
     """Обработка запроса сотрудника тип оборудования."""
 
-    if message.text not in get_button_text(replay.equiment_keyboard):
+    if message.text not in get_button_text(replay.equipment_keyboard):
         await message.answer(
             ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
              'или Меню для выхода')
             )
     else:
-        await state.update_data(tupe_equiment=message.text)
+        await state.update_data(tupe_equipment=message.text)
         await message.answer('Выберите модель оборудования.')
         keyboard = get_model_keyboard(message.text)
 
         await message.answer(reply_markup=keyboard)
-        await state.set_state(RequestForHelpWorker.model_equiment)
+        await state.set_state(RequestForHelpWorker.model_equipment)

@@ -163,3 +163,4 @@ cython_debug/
 infra-dev/
 *.db
 media/
+*.xlsx

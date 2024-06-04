@@ -21,45 +21,81 @@ class Gost(BaseWorker):
         return self.gost
 
 
-class TupeEquiment(BaseWorker):
+class TupeEquipment(BaseWorker):
     """Модель базы данных, тип оборудования."""
 
-    __tablename__ = 'tupe_equiment'
+    __tablename__ = 'tupe_equipment'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    type_equiment: Mapped[str] = mapped_column(String(50), nullable=False)
+    type_equipment: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    model_equiments = relationship(
-        "ModelEquiment",
-        back_populates="tupe_equiment"
+    model_equipments = relationship(
+        "ModelEquipment",
+        back_populates="tupe_equipment"
     )
 
     def __repr__(self) -> str:
-        return self.type_equiment
+        return self.type_equipment
 
 
-class ModelEquiment(BaseWorker):
+class ProducerEquipment(BaseWorker):
+    """Модель базы данных, производитель оборудования."""
+
+    __tablename__ = 'producer_equipment'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_equipment_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('tupe_equipment.id'), nullable=False
+    )
+    producer_equipment: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    tupe_equipment = relationship(
+        "TupeEquipment",
+        back_populates="producer_equipments"
+    )
+
+    def __repr__(self) -> str:
+        return self.producer_equipment
+
+
+# Таблица для связи "многие ко многим" между ModelEquipment и CodeError
+model_equipment_code_error_association = Table(
+    'model_equipment_code_error',
+    BaseWorker.metadata,
+    Column(
+        'model_equipment_id', Integer,
+        ForeignKey('model_equipment.id'), primary_key=True
+        ),
+    Column(
+        'code_error_id', Integer,
+        ForeignKey('code_error.id'), primary_key=True
+        )
+)
+
+
+class ModelEquipment(BaseWorker):
     """Модель базы данных, модель оборудования."""
 
-    __tablename__ = 'model_equiment'
+    __tablename__ = 'model_equipment'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    type_equiment_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('tupe_equiment.id'), nullable=False
+    producer_equipment_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('producer_equipment.id'), nullable=False
     )
-    model_equiment: Mapped[str] = mapped_column(String(50), nullable=False)
+    model_equipment: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    tupe_equiment = relationship(
-        "TupeEquiment",
-        back_populates="model_equiments"
+    producer_equipment = relationship(
+        "ProducerEquipment",
+        back_populates="model_equipments"
     )
+
     code_errors = relationship(
         "CodeError",
-        back_populates="model_equiment"
+        back_populates="model_equipment"
     )
 
     def __repr__(self) -> str:
-        return self.model_equiment
+        return self.model_equipment
 
 
 # Таблица для связи "многие ко многим" между CodeError и FmiNumber
@@ -83,13 +119,16 @@ class CodeError(BaseWorker):
     __tablename__ = 'code_error'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    model_equiment_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('model_equiment.id'), nullable=False
+    model_equipment_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('model_equipment.id'), nullable=False
     )
     code_error: Mapped[str] = mapped_column(String(50), nullable=False)
+    text_error: Mapped[str] = mapped_column(Text, nullable=False)
+    translation_text_error: Mapped[str] = mapped_column(Text, nullable=True)
+    fmi_numbers: Mapped[int] = mapped_column()
 
-    model_equiment = relationship(
-        "ModelEquiment",
+    model_equipment = relationship(
+        "ModelEquipment",
         back_populates="code_errors"
     )
     fmi_numbers = relationship(
@@ -108,7 +147,8 @@ class FmiNumber(BaseWorker):
     __tablename__ = 'fmi_number'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    fmi_number: Mapped[str] = mapped_column(String(250), nullable=False)
+    fmi_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(String(250), nullable=False)
 
     code_errors = relationship(
         "CodeError",
