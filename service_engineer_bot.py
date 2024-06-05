@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from constant import ALOWED_UPDATES
 from database.engine import create_db, drop_db, session_maker
+from database.load_data import load_data
 from handlers.user_shared import user_shared
 from handlers.user_client import user_client_router
 from handlers.user_worker import user_worker_router
@@ -34,6 +35,7 @@ async def on_startup(dispatcher):
     if run_parametr:
         await drop_db()
     await create_db()
+    await load_data()
 
 
 async def on_shutdown(dispatcher):

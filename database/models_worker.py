@@ -4,13 +4,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class BaseWorker(DeclarativeBase):
     """Базовая модель базы данных, сотрудники."""
-
     __abstract__ = True
 
 
 class Gost(BaseWorker):
     """Модель базы данных, ГОСТ."""
-
     __tablename__ = 'gost'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -23,14 +21,13 @@ class Gost(BaseWorker):
 
 class TupeEquipment(BaseWorker):
     """Модель базы данных, тип оборудования."""
-
     __tablename__ = 'tupe_equipment'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     type_equipment: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    model_equipments = relationship(
-        "ModelEquipment",
+    producer_equipments = relationship(
+        "ProducerEquipment",
         back_populates="tupe_equipment"
     )
 
@@ -40,7 +37,6 @@ class TupeEquipment(BaseWorker):
 
 class ProducerEquipment(BaseWorker):
     """Модель базы данных, производитель оборудования."""
-
     __tablename__ = 'producer_equipment'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -54,6 +50,11 @@ class ProducerEquipment(BaseWorker):
         back_populates="producer_equipments"
     )
 
+    model_equipments = relationship(
+        "ModelEquipment",
+        back_populates="producer_equipment"
+    )
+
     def __repr__(self) -> str:
         return self.producer_equipment
 
@@ -65,17 +66,16 @@ model_equipment_code_error_association = Table(
     Column(
         'model_equipment_id', Integer,
         ForeignKey('model_equipment.id'), primary_key=True
-        ),
+    ),
     Column(
         'code_error_id', Integer,
         ForeignKey('code_error.id'), primary_key=True
-        )
+    )
 )
 
 
 class ModelEquipment(BaseWorker):
     """Модель базы данных, модель оборудования."""
-
     __tablename__ = 'model_equipment'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -91,7 +91,8 @@ class ModelEquipment(BaseWorker):
 
     code_errors = relationship(
         "CodeError",
-        back_populates="model_equipment"
+        secondary=model_equipment_code_error_association,
+        back_populates="model_equipments"
     )
 
     def __repr__(self) -> str:
@@ -105,30 +106,26 @@ code_error_fmi_association = Table(
     Column(
         'code_error_id', Integer,
         ForeignKey('code_error.id'), primary_key=True
-        ),
+    ),
     Column(
         'fmi_number_id', Integer,
         ForeignKey('fmi_number.id'), primary_key=True
-        )
+    )
 )
 
 
 class CodeError(BaseWorker):
     """Модель базы данных, код ошибки."""
-
     __tablename__ = 'code_error'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    model_equipment_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('model_equipment.id'), nullable=False
-    )
     code_error: Mapped[str] = mapped_column(String(50), nullable=False)
     text_error: Mapped[str] = mapped_column(Text, nullable=False)
     translation_text_error: Mapped[str] = mapped_column(Text, nullable=True)
-    fmi_numbers: Mapped[int] = mapped_column()
 
-    model_equipment = relationship(
+    model_equipments = relationship(
         "ModelEquipment",
+        secondary=model_equipment_code_error_association,
         back_populates="code_errors"
     )
     fmi_numbers = relationship(
@@ -143,7 +140,6 @@ class CodeError(BaseWorker):
 
 class FmiNumber(BaseWorker):
     """Модель базы данных, FMI номер."""
-
     __tablename__ = 'fmi_number'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
