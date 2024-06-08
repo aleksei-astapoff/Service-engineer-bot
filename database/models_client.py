@@ -68,7 +68,8 @@ class Photo(BaseClient):
     order_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('orders.id'), nullable=False
         )
-    file_path = mapped_column(String(250), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(250), nullable=False)
+    photo_id: Mapped[str] = mapped_column(String(250), nullable=False)
 
     order = relationship(
         "Order",

@@ -22,14 +22,14 @@ async def ensure_dir(derictory: str):
 
 async def save_photos(photos, client_id, order_id, address_machine):
     """Сохранение фотографий в директории."""
-    image_paths = []
+    image_paths = {}
     client_dir = os.path.join(MEDIA_ROOT_DIR, str(client_id))
     order_dir = os.path.join(client_dir, str(order_id))
 
     await ensure_dir(order_dir)
 
     async with aiohttp.ClientSession() as session:
-        for index, photo_id in enumerate(photos):
+        for index, photo_id in enumerate(photos, start=1):
             try:
                 file_info = await bot_telegram.get_file(photo_id)
                 file_path = (
@@ -39,12 +39,12 @@ async def save_photos(photos, client_id, order_id, address_machine):
                     )
                 async with session.get(file_path) as response:
                     if response.status == 200:
-                        filename = f"{address_machine}_photo_{index+1}.jpg"
+                        filename = f"{address_machine}_photo_{index}.jpg"
                         filepath = os.path.join(order_dir, filename)
                         async with aiofiles.open(filepath, 'wb') as file:
                             content = await response.read()
                             await file.write(content)
-                        image_paths.append(filepath)
+                        image_paths[filepath] = photo_id
                     else:
                         print(
                             'Ошибка загрузки сервера, фото: '
@@ -127,8 +127,10 @@ async def orm_add_order(session: AsyncSession, data: dict):
         order.image = order_dir_str
         session.add(order)
 
-        for image_path in image_paths:
-            photo = Photo(order_id=order.id, file_path=image_path)
+        for image_path, photo_id in image_paths.items():
+            photo = Photo(
+                order_id=order.id, file_path=image_path, photo_id=photo_id
+                )
             session.add(photo)
 
     await session.commit()
