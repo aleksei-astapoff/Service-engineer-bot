@@ -12,11 +12,12 @@ class Gost(BaseWorker):
     __tablename__ = 'gost'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    gost: Mapped[str] = mapped_column(String(50), nullable=False)
+    gost_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    gost_shot_name: Mapped[str] = mapped_column(String(150), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
 
     def __repr__(self) -> str:
-        return self.gost
+        return self.gost_shot_name
 
 
 class TupeEquipment(BaseWorker):

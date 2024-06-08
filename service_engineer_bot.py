@@ -35,7 +35,15 @@ async def on_startup(dispatcher):
     if run_parametr:
         await drop_db()
     await create_db()
-    await load_data()
+    try:
+        await load_data()
+        print('База данных загружена')
+    except Exception as exс:
+        print(
+            f'''
+            При иниуиализации бота произошла ошибка,
+            (загрузки/обновления) кодов ошибок: {exс}
+            ''')
 
 
 async def on_shutdown(dispatcher):
