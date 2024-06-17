@@ -6,11 +6,14 @@ from aiogram import F, types, Router
 from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.orm_query_client import orm_add_order
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay
 from commands_bot.commands_bot_list import command_fsm
-from utils import reset_to_start_command, bot_telegram, get_button_text
+from utils import (create_message, reset_to_start_command,
+                   bot_telegram, get_button_text)
 from validators.validator import validator_phone_number
 
 load_dotenv()
@@ -29,7 +32,7 @@ class RequestForService(StatesGroup):
     serial_number = State()
     image = State()
     phone_number = State()
-    addreess_machine = State()
+    address_machine = State()
 
     text = {
         'RequestForService:type_service': 'Выберите тип услуги',
@@ -38,7 +41,7 @@ class RequestForService(StatesGroup):
         'RequestForService:serial_number': 'Введите серийный номер оборудования', # noqa
         'RequestForService:image': 'Добавьте фото оборудования не более 5 изображений', # noqa
         'RequestForService:phone_number': 'Введите ваш номер телефона',
-        'RequestForService:addreess_machine': 'Введите ваш адрес',
+        'RequestForService:address_machine': 'Введите ваш адрес',
     }
 
 
@@ -88,7 +91,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state == RequestForService.type_service:
         await message.answer(
-            'Предидущего шага нет. Воспользуйтесь меню: "Отмена"'
+            'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
             )
         return
     previous = None
@@ -107,7 +110,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
                 keyboard = replay.del_keyboard
             await message.answer(
                 f'Вы вернулись к прошлому шагу: '
-                f' {RequestForService.text[previous.state]}',
+                f'{RequestForService.text[previous.state]}',
                 reply_markup=keyboard
             )
         previous = step
@@ -195,12 +198,20 @@ async def image(message: types.Message, state: FSMContext):
                 ('Вы загрузили максимальное количество изображений. '
                     'Нажмите "Готово", чтобы продолжить.'),
                 reply_markup=replay.image_keyboard)
+
         else:
             await message.answer(
                 f'{len(images_list)} изображений сохранено. '
                 f'Вы можете загрузить еще {5 - len(images_list)} изображений '
                 f'или нажмите "Готово", чтобы продолжить.',
                 reply_markup=replay.image_keyboard)
+
+    else:
+        await state.update_data(image=[])
+        await message.answer(
+            'Вы пытаетесь загрузить более 5 изображений.'
+            'Обработка фото остановлена! Повторите загрузку.',
+            reply_markup=replay.image_keyboard)
 
 
 @user_client_router.message(RequestForService.image, F.text)
@@ -251,29 +262,31 @@ async def phone_number(message: types.Message, state: FSMContext):
             reply_markup=replay.phone_keyboard)
         return
 
-    await state.update_data(phone_number=phone_number,
-                            fist_name=message.from_user.first_name,
-                            last_name=message.from_user.last_name,
-                            telegram_profile_username=message.from_user.username,
-                            telegram_profile_id=message.from_user.id,
-                            )
+    await state.update_data(
+        phone_number=phone_number,
+        fist_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+        telegram_profile_username=message.from_user.username,
+        telegram_profile_id=message.from_user.id,
+    )
     await message.answer(
         'Введите адрес оборудования.Форма ввода: Город, улица, дом',
         reply_markup=replay.del_keyboard,
-        input_field_placeholder='Город, улица, дом'
+        input_field_placeholder='Город, улица, номер дом или участка'
     )
-    await state.set_state(RequestForService.addreess_machine)
+    await state.set_state(RequestForService.address_machine)
 
 
-@user_client_router.message(RequestForService.addreess_machine, F.text)
-async def addreess_machine(message: types.Message, state: FSMContext):
+@user_client_router.message(RequestForService.address_machine, F.text)
+async def address_machine(
+        message: types.Message, state: FSMContext, session: AsyncSession
+        ):
     """Обработка запроса клиента сохранение адреса оборудования."""
 
-    await state.update_data(addreess_machine=message.text)
-    await message.answer('Заявка будет обработана',
-                         reply_markup=replay.start_keyboard)
+    await state.update_data(address_machine=message.text)
+
     data = await state.get_data()
-    # await message.answer(str(data))
+
     await message.bot.send_message(
         os.getenv('MANAGER_CHAT_ID'),
         'Заявка на обработку')
@@ -281,17 +294,24 @@ async def addreess_machine(message: types.Message, state: FSMContext):
     for photo in photos:
         await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
 
-    application = f'''
-    Профиль: @{data.get('telegram_profile_id')}
-    ФИО: {data.get('fist_name')} {data.get('last_name')}'
-    Номер телефона: +{data.get('phone_number')}
-    Адрес оборудования: {data.get('addreess_machine')}
-    Тип услуги: {data.get('type_service')}
-    Тип оборудования: {data.get('type_machine')}
-    Модель оборудования: {data.get('model_machine')}
-    Серийный номер: {data.get('serial_number')}
-    '''
+    application = create_message(data)
 
     await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
+
+    try:
+        await orm_add_order(session, data)
+
+    except Exception as exc:
+        text = f'''
+        Ошибка при сохранении заявки в Базу данных:
+        {str(exc)}
+        Обратитесь в службу поддержки.
+        '''
+        await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
+
     await state.clear()
+    await message.answer(
+        'Заявка оформлена. Менеджер свяжется с вами в ближайшее время.',
+        reply_markup=replay.start_keyboard
+    )
     await reset_to_start_command(message)

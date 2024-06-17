@@ -1,6 +1,7 @@
 from aiogram import F, types, Router
 from aiogram.filters import CommandStart, Command, or_f
 
+from database.load_data import load_data
 from filters.chat_type import ChatTypeFilter
 
 from keyboard import replay
@@ -45,6 +46,16 @@ async def about_cmd(message: types.Message):
 
     await reset_to_start_command(message)
     await message.answer(ABOUT)
+
+
+@user_shared.message(F.text.lower().contains('обновись'))
+async def update_code_error_in_db(message: types.Message):
+    """Обновление кодов ошибок в базе данных."""
+    try:
+        await load_data()
+        await message.answer('Обновлено')
+    except Exception as exс:
+        await message.answer(f'Произошла ошибка: {exс}')
 
 
 @user_shared.message(F.text)
