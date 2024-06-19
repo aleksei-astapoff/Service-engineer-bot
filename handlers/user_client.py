@@ -89,7 +89,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
     current_state = await state.get_state()
-    if current_state == RequestForService.type_service:
+    if current_state == RequestForService.type_service.state:
         await message.answer(
             'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
             )

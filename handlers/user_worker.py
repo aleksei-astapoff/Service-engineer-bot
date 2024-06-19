@@ -2,12 +2,14 @@ from aiogram import F, types, Router
 from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from filters.chat_type import ChatTypeFilter
-from keyboard import replay
+from keyboard import replay, dynamic_keyboard
 from commands_bot.commands_bot_list import command_fsm
 from utils import (reset_to_start_command, bot_telegram, get_button_text,
                    get_model_keyboard)
+from database.orm_query_worker import orm_get_gost
 
 user_worker_router = Router()
 
@@ -34,6 +36,15 @@ class RequestForHelpWorker(StatesGroup):
         'RequestForHelpWorker:gost_step': 'Выберите ГОСТ',
     }
 
+    state_transitions = {
+        'RequestForHelpWorker:tupe_equipment': 'RequestForHelpWorker:tupe_request',
+        'RequestForHelpWorker:model_equipment': 'RequestForHelpWorker:tupe_equipment',
+        'RequestForHelpWorker:code_error': 'RequestForHelpWorker:model_equipment',
+        'RequestForHelpWorker:fmi_number': 'RequestForHelpWorker:code_error',
+        'RequestForHelpWorker:gost_step': 'RequestForHelpWorker:tupe_request',
+        'RequestForHelpWorker:finally_step': 'RequestForHelpWorker:gost_step'
+    }
+
 
 @user_worker_router.message(
         StateFilter(None),
@@ -48,13 +59,7 @@ async def error_code_cmd(message: types.Message, state: FSMContext):
         )
     await state.set_state(RequestForHelpWorker.tupe_request)
     await message.answer(
-        # 'Выберете тип запроса. Для выхода воспльзутесь Меню',
-        # reply_markup=replay.worker_keyboard
-        'Данный раздел находится в разработке. Возвращаемся на главную.'
-        )
-    await state.set_state(RequestForHelpWorker.tupe_request)
-    await message.answer(
-        'Выберете тип запроса. Для выхода воспльзутесь Меню',
+        'Выберите тип запроса. Для выхода воспользуйтесь Меню',
         reply_markup=replay.worker_keyboard
     )
 
@@ -70,10 +75,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
         return
     await state.clear()
     await message.answer(
-        'Отменена запроса', reply_markup=replay.start_keyboard
+        'Отмена запроса', reply_markup=replay.start_keyboard
         )
     await reset_to_start_command(message)
-
 
 @user_worker_router.message(StateFilter('*'), Command('back'))
 @user_worker_router.message(StateFilter('*'), F.text.casefold() == 'назад')
@@ -81,39 +85,41 @@ async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
     current_state = await state.get_state()
-    if current_state == RequestForHelpWorker.tupe_request:
+
+    previous_state = RequestForHelpWorker.state_transitions.get(current_state)
+
+    if not previous_state:
         await message.answer(
             'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
-            )
+        )
         return
-    previous = None
-    for step in RequestForHelpWorker.__all_states__:
-        if step.state == current_state:
-            await state.set_state(previous)
-            if previous.state == 'RequestForHelpWorker:tupe_request':
-                keyboard = replay.worker_keyboard
-            elif previous.state == 'RequestForHelpWorker:gost_step':
-                keyboard = replay.gost_keyboard
-            elif previous.state == 'RequestForHelpWorker:tupe_equipment':
-                keyboard = replay.tupe_equipment_keyboard
-            elif previous.state == 'RequestForHelpWorker:model_equipment':
-                keyboard = replay.model_equipment_keyboard
-            elif previous.state == 'RequestForHelpWorker:code_error':
-                keyboard = replay.del_keyboard
-            elif previous.state == 'RequestForHelpWorker:fmi_number':
-                keyboard = replay.del_keyboard
-            else:
-                keyboard = replay.del_keyboard
-            await message.answer(
-                f'Вы вернулись к прошлому шагу: '
-                f'{RequestForHelpWorker.text[previous.state]}',
-                reply_markup=keyboard
-            )
-        previous = step
 
+    await state.set_state(previous_state)
+
+    # Выбор клавиатуры в зависимости от предыдущего состояния
+    if previous_state == 'RequestForHelpWorker:tupe_request':
+        keyboard = replay.worker_keyboard
+    elif previous_state == 'RequestForHelpWorker:gost_step':
+        keyboard = replay.del_keyboard
+    elif previous_state == 'RequestForHelpWorker:tupe_equipment':
+        keyboard = replay.tupe_equipment_keyboard
+    elif previous_state == 'RequestForHelpWorker:model_equipment':
+        keyboard = replay.model_equipment_keyboard
+    elif previous_state == 'RequestForHelpWorker:code_error':
+        keyboard = replay.del_keyboard
+    elif previous_state == 'RequestForHelpWorker:fmi_number':
+        keyboard = replay.del_keyboard
+    else:
+        keyboard = replay.del_keyboard
+
+    await message.answer(
+        f'Вы вернулись к прошлому шагу: {RequestForHelpWorker.text[previous_state]}',
+        reply_markup=keyboard
+    )
 
 @user_worker_router.message(RequestForHelpWorker.tupe_request, F.text)
-async def type_service(message: types.Message, state: FSMContext):
+async def type_service(
+     message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка запроса сотрудника, тип запроса."""
 
     if message.text not in get_button_text(replay.worker_keyboard):
@@ -122,9 +128,16 @@ async def type_service(message: types.Message, state: FSMContext):
              'или Меню для выхода')
             )
     elif message.text.casefold() == 'гост':
-        await state.update_data(tupe_request=message.text)
-        await message.answer('Выберите ГОСТ.',
-                             reply_markup=replay.gost_keyboard)
+        await state.update_data(tupe_request=message.text.casefold())
+        tupe_request = (await state.get_data()).get('tupe_request')
+        gost_keyboard = (
+            await dynamic_keyboard.get_dynamic_keyboard(session, tupe_request)
+            )
+        await message.answer(
+            'Выберите ГОСТ из списка.',
+            reply_markup=gost_keyboard
+            )
+        await state.update_data(gost_keyboard=gost_keyboard)
         await state.set_state(RequestForHelpWorker.gost_step)
     else:
         await state.update_data(tupe_request=message.text)
@@ -134,14 +147,29 @@ async def type_service(message: types.Message, state: FSMContext):
 
 
 @user_worker_router.message(RequestForHelpWorker.gost_step, F.text)
-async def gost(message: types.Message, state: FSMContext):
+async def gost(
+    message: types.Message, state: FSMContext, session: AsyncSession
+):
     """Обработка запроса сотрудника ГОСТ."""
 
-    await state.update_data({})
-    await message.answer('ГОСТы пока не загружены в Базу Данных',
-                         reply_markup=replay.worker_keyboard)
-    await state.set_state(RequestForHelpWorker.tupe_request)
+    if message.text not in get_button_text(
+        (await state.get_data()).get('gost_keyboard')
+    ):
+        await message.answer(
+            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
+             'или Меню для выхода')
+            )
+    else:
+        gost = await orm_get_gost(session, message.text)
+        message_gost = f'''
+        Наименование: {gost.gost_shot_name}
+        ГОСТ № {gost.gost_number}
+        Описание: {gost.text}
+        '''
 
+        await message.answer(message_gost, reply_markup=replay.start_keyboard)
+        await state.clear()
+        await reset_to_start_command(message)
 
 @user_worker_router.message(RequestForHelpWorker.tupe_equipment, F.text)
 async def type_equipment(message: types.Message, state: FSMContext):

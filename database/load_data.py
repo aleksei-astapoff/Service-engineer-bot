@@ -162,7 +162,7 @@ async def load_code_error_in_db(table_data, session: AsyncSession):
 async def load_data():
     """Загрузка данных из exce в базу данных."""
     df = pd.ExcelFile(
-        'database/data/engine_error_codes.xlsx',
+        'data/engine_error_codes.xlsx',
         )
     async with session_maker() as session:
         for sheet_name in df.sheet_names:
