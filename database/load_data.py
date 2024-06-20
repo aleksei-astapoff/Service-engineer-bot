@@ -2,10 +2,12 @@ import pandas as pd
 
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from database.engine import session_maker
 from database.models_worker import (FmiNumber, TupeEquipment,
                                     ProducerEquipment, Gost,
                                     ModelEquipment, CodeError)
+from utils import unification_code_error
 
 DICT_WORKER = {
     'type_equipment': TupeEquipment,
@@ -116,7 +118,7 @@ async def load_code_error_in_db(table_data, session: AsyncSession):
             else:
                 code_error = (await session.execute(
                     select(CodeError).filter_by(
-                        code_error=row.code_error,
+                        code_error=unification_code_error(row.code_error),
                         text_error=row.text_error,
                     )
                 )).scalars().first()

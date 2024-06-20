@@ -6,6 +6,7 @@ from database.models_worker import (CodeError, Gost, ModelEquipment,
                                     ProducerEquipment)
 from utils import unification_code_error
 
+
 async def orm_get_gost(session: AsyncSession, gost: str):
     """Получение ГОСТ из базы данных."""
 
@@ -17,7 +18,7 @@ async def orm_get_gost(session: AsyncSession, gost: str):
     return gost
 
 
-async def orm_get_all_gost(session: AsyncSession, code_error: str):
+async def orm_get_code_error(session: AsyncSession, code_error: str):
     """Получение кодов ошибок из базы данных."""
 
     unification_code = unification_code_error(code_error)

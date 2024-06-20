@@ -7,8 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay, dynamic_keyboard
 from commands_bot.commands_bot_list import command_fsm
-from utils import (reset_to_start_command, bot_telegram, get_button_text,
-                   get_model_keyboard)
+from utils import (reset_to_start_command, bot_telegram, get_button_text)
 from database.orm_query_worker import orm_get_gost, orm_get_code_error
 
 user_worker_router = Router()
