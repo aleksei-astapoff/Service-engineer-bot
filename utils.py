@@ -30,15 +30,6 @@ async def reset_to_start_command(message: types.Message):
             scope=types.BotCommandScopeChat(chat_id=message.chat.id)
         )
 
-
-def get_model_keyboard(type_equiment):
-    """Генерация клавиатуры для выбора модели оборудования."""
-
-    if type_equiment == 'Панель управления':
-        pass
-    pass
-
-
 def create_message(data):
     """Создание сообщения для заявки."""
 
@@ -53,3 +44,11 @@ def create_message(data):
     Серийный номер: {data.get('serial_number')}
     '''
     return text
+
+
+def unification_code_error(code_error):
+    code_error = str(code_error)
+    code_error = (
+        code_error.replace(' ', '').replace('-', '').replace('(', '')
+        .replace(')', '').replace('_', '').strip())
+    return code_error

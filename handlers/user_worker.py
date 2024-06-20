@@ -9,7 +9,7 @@ from keyboard import replay, dynamic_keyboard
 from commands_bot.commands_bot_list import command_fsm
 from utils import (reset_to_start_command, bot_telegram, get_button_text,
                    get_model_keyboard)
-from database.orm_query_worker import orm_get_gost
+from database.orm_query_worker import orm_get_gost, orm_get_code_error
 
 user_worker_router = Router()
 
@@ -21,6 +21,7 @@ class RequestForHelpWorker(StatesGroup):
 
     tupe_request = State()
     tupe_equipment = State()
+    producer_equipment = State()
     model_equipment = State()
     code_error = State()
     fmi_number = State()
@@ -79,9 +80,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
         )
     await reset_to_start_command(message)
 
-@user_worker_router.message(StateFilter('*'), Command('back'))
-@user_worker_router.message(StateFilter('*'), F.text.casefold() == 'назад')
-async def back_cmd(message: types.Message, state: FSMContext):
+# @user_worker_router.message(StateFilter('*'), Command('back'))
+# @user_worker_router.message(StateFilter('*'), F.text.casefold() == 'назад')
+# async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
     current_state = await state.get_state()
@@ -117,6 +118,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
+
 @user_worker_router.message(RequestForHelpWorker.tupe_request, F.text)
 async def type_service(
      message: types.Message, state: FSMContext, session: AsyncSession):
@@ -141,9 +143,9 @@ async def type_service(
         await state.set_state(RequestForHelpWorker.gost_step)
     else:
         await state.update_data(tupe_request=message.text)
-        await message.answer('Выберите тип оборудования.',
-                             reply_markup=replay.equipment_keyboard)
-        await state.set_state(RequestForHelpWorker.tupe_equipment)
+        await message.answer('Введите код ошибки.',
+                             reply_markup=replay.del_keyboard)
+        await state.set_state(RequestForHelpWorker.code_error)
 
 
 @user_worker_router.message(RequestForHelpWorker.gost_step, F.text)
@@ -171,19 +173,19 @@ async def gost(
         await state.clear()
         await reset_to_start_command(message)
 
-@user_worker_router.message(RequestForHelpWorker.tupe_equipment, F.text)
-async def type_equipment(message: types.Message, state: FSMContext):
+
+@user_worker_router.message(RequestForHelpWorker.code_error, F.text)
+async def type_equipment(
+    message: types.Message, state: FSMContext, session: AsyncSession
+):
     """Обработка запроса сотрудника тип оборудования."""
 
-    if message.text not in get_button_text(replay.equipment_keyboard):
-        await message.answer(
-            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
-             'или Меню для выхода')
-            )
+    code_error = await orm_get_code_error(session, message.text)
+    if len(code_error) == 1:
+        await message.answer()
+        await state.clear()
+        await reset_to_start_command(message)
     else:
-        await state.update_data(tupe_equipment=message.text)
-        await message.answer('Выберите модель оборудования.')
-        keyboard = get_model_keyboard(message.text)
-
-        await message.answer(reply_markup=keyboard)
-        await state.set_state(RequestForHelpWorker.model_equipment)
+        await message.answer('Выберите тип оборудования.',)
+        await state.update_data(code_error=code_error)
+        await state.set_state(RequestForHelpWorker.tupe_equipment)
