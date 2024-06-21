@@ -30,6 +30,6 @@ async def orm_get_code_error(session: AsyncSession, code_error: str):
                         ProducerEquipment.tupe_equipment),
             selectinload(CodeError.fmi_numbers),
         ).where(CodeError.code_error == unification_code)
-    )).all()
+    )).scalars().all()
     print(result)
     return result

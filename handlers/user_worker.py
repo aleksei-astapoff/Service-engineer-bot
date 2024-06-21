@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay, dynamic_keyboard
 from commands_bot.commands_bot_list import command_fsm
-from utils import (reset_to_start_command, bot_telegram, get_button_text)
+from utils import (reset_to_start_command, bot_telegram, get_button_text,
+                   create_message_error)
 from database.orm_query_worker import orm_get_gost, orm_get_code_error
 
 user_worker_router = Router()
@@ -128,9 +129,10 @@ async def type_service(
             ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
              'или Меню для выхода')
             )
-    elif message.text.casefold() == 'гост':
+    else:
         await state.update_data(tupe_request=message.text.casefold())
-        tupe_request = (await state.get_data()).get('tupe_request')
+    if message.text.casefold() == 'гост':
+        tupe_request = await state.get_data()
         gost_keyboard = (
             await dynamic_keyboard.get_dynamic_keyboard(session, tupe_request)
             )
@@ -141,7 +143,6 @@ async def type_service(
         await state.update_data(gost_keyboard=gost_keyboard)
         await state.set_state(RequestForHelpWorker.gost_step)
     else:
-        await state.update_data(tupe_request=message.text)
         await message.answer('Введите код ошибки.',
                              reply_markup=replay.del_keyboard)
         await state.set_state(RequestForHelpWorker.code_error)
@@ -179,12 +180,48 @@ async def type_equipment(
 ):
     """Обработка запроса сотрудника тип оборудования."""
 
-    code_error = await orm_get_code_error(session, message.text)
-    if len(code_error) == 1:
-        await message.answer()
+    code_errors = await orm_get_code_error(session, message.text)
+    if len(code_errors) == 1:
+        code_error = code_errors.pop()
+        if not code_error.fmi_numbers or len(code_error.fmi_numbers) <= 1:
+            await message.answer(
+                create_message_error(code_error),
+                reply_markup=replay.start_keyboard)
+            await state.clear()
+            await reset_to_start_command(message)
+    elif not code_errors:
+        await message.answer('Такого кода ошибки нет в базе данных.')
         await state.clear()
         await reset_to_start_command(message)
+
     else:
-        await message.answer('Выберите тип оборудования.',)
-        await state.update_data(code_error=code_error)
-        await state.set_state(RequestForHelpWorker.tupe_equipment)
+        type_equipments = []
+        for code_error in code_errors:
+            type_equipment = ', '.join(
+                set(str(model_equipment.producer_equipment.tupe_equipment)
+                    for model_equipment in code_error.model_equipments))
+            if type_equipment not in type_equipments:
+                type_equipments.append(type_equipment)
+        if len(type_equipments) != 1:
+            await state.update_data(code_errors=code_errors)
+            data = await state.get_data()
+            keyboard_type_equipments = (
+                await dynamic_keyboard.get_dynamic_keyboard(session, data)
+            )
+            await message.answer(
+                'Выберите тип оборудования из списка.',
+                reply_markup=keyboard_type_equipments
+            )
+            await state.update_data(
+                keyboard_type_equipments=keyboard_type_equipments
+                )
+            await state.set_state(RequestForHelpWorker.tupe_equipment)
+
+        # await message.answer(
+        #             create_message_error(code_error),
+        #             )
+        # await message.answer(
+        #     'Возвращаемся к главному меню', reply_markup=replay.start_keyboard
+        #     )
+        # await state.clear()
+        # await reset_to_start_command(message)
