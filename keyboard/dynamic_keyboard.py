@@ -5,25 +5,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models_worker import Gost
 
-DICT_MODEL_WORKER = {
-    'гост': Gost.gost_shot_name
-}
-
 
 async def get_dynamic_keyboard(session: AsyncSession, data: str):
     """Получение динамической клавиатуры."""
     tupe_request = data.get('tupe_request')
+    type_equipments = data.get('keyboard_type_equipments', None)
+    producer_equipments = data.get('keyboard_producer_equipments', None)
+    code_errors = data.get('code_errors')
     if tupe_request == 'гост':
         query = (
-            await session.execute(select(DICT_MODEL_WORKER[tupe_request]))
+            await session.execute(select(Gost.gost_shot_name))
             ).scalars().all()
         button: list = [[KeyboardButton(text=row)] for row in query]
 
         keyboard = ReplyKeyboardMarkup(keyboard=button, resize_keyboard=True)
 
-        return keyboard
-    elif tupe_request == 'коды ошибок':
-        code_errors = data.get('code_errors')
+    elif tupe_request == 'коды ошибок' and not type_equipments:
         type_equipments = []
         for code_error in code_errors:
             type_equipment = ', '.join(
@@ -35,4 +32,29 @@ async def get_dynamic_keyboard(session: AsyncSession, data: str):
 
         keyboard = ReplyKeyboardMarkup(keyboard=button, resize_keyboard=True)
 
-        return keyboard
+    elif tupe_request == 'коды ошибок' and type_equipments and not producer_equipments:
+        producer_equipments = []
+        for code_error in code_errors:
+            producer_equipment = ', '.join(
+                set(str(model_equipment.producer_equipment.producer_equipment)
+                    for model_equipment in code_error.model_equipments))
+            if producer_equipment not in producer_equipments:
+                producer_equipments.append(producer_equipment)
+        button: list = [
+            [KeyboardButton(text=row)] for row in producer_equipments
+            ]
+        keyboard = ReplyKeyboardMarkup(keyboard=button, resize_keyboard=True)
+    elif tupe_request == 'коды ошибок' and producer_equipments:
+        model_equipments = []
+        for code_error in code_errors:
+            model_equipment = ', '.join(
+                set(str(model_equipment.model_equipment)
+                    for model_equipment in code_error.model_equipments))
+            if model_equipment not in model_equipments:
+                model_equipments.append(model_equipment)
+        button: list = [
+            [KeyboardButton(text=row)] for row in model_equipments
+            ]
+        keyboard = ReplyKeyboardMarkup(keyboard=button, resize_keyboard=True)
+
+    return keyboard if keyboard else None
