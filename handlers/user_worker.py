@@ -342,7 +342,7 @@ async def model_equipment(
                     model_equipment.model_equipment
                     )
                 if (
-                    model_equipment == model_equipment_request
+                    model_equipment in model_equipment_request
                     and code_error not in list_code_errors
                 ):
                     list_code_errors.append(code_error)

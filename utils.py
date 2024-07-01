@@ -80,7 +80,7 @@ def create_message_error(code_error):
     \nКод ошибки: {code_error.code_error}
     \nОшибка: {code_error.text_error}
     \nПеревод ошибки: {code_error.translation_text_error}
-    \nFMI:
+    \nВозможные FMI:
     \n{fmi}
     '''
     return text
