@@ -35,13 +35,26 @@ class RequestForService(StatesGroup):
     address_machine = State()
 
     text = {
-        'RequestForService:type_service': 'Выберите тип услуги',
-        'RequestForService:type_machine': 'Введите тип оборудования',
-        'RequestForService:model_machine': 'Введите модель оборудования',
-        'RequestForService:serial_number': 'Введите серийный номер оборудования', # noqa
-        'RequestForService:image': 'Добавьте фото оборудования не более 5 изображений', # noqa
-        'RequestForService:phone_number': 'Введите ваш номер телефона',
-        'RequestForService:address_machine': 'Введите ваш адрес',
+        'RequestForService:type_service': 'Выберите тип услуги.',
+        'RequestForService:type_machine': 'Введите тип оборудования.',
+        'RequestForService:model_machine': 'Введите модель оборудования.',
+        'RequestForService:serial_number':
+        'Введите серийный номер оборудования.',
+
+        'RequestForService:image':
+        'Добавьте фото оборудования не более 5 изображений',
+
+        'RequestForService:phone_number': 'Введите ваш номер телефона.',
+        'RequestForService:address_machine': 'Введите ваш адрес.',
+    }
+
+    state_transitions = {
+        'RequestForService:type_machine': 'RequestForService:type_service',
+        'RequestForService:model_machine': 'RequestForService:type_machine',
+        'RequestForService:serial_number': 'RequestForService:model_machine',
+        'RequestForService:image': 'RequestForService:serial_number',
+        'RequestForService:phone_number': 'RequestForService:image',
+        'RequestForService:address_machine': 'RequestForService:phone_number',
     }
 
 
@@ -65,58 +78,6 @@ async def service_cmd(message: types.Message, state: FSMContext):
         'Что вас интересует? Для выхода воспльзутесь Меню',
         reply_markup=replay.client_keyboard,
         )
-
-
-@user_client_router.message(StateFilter('*'), Command('cancel'))
-@user_client_router.message(StateFilter('*'), F.text.casefold() == 'отмена')
-async def cancel_cmd(message: types.Message, state: FSMContext):
-    """Обработка запроса отмены."""
-
-    current_state = await state.get_state()
-    if current_state is None:
-        await reset_to_start_command(message)
-        await message.answer(
-         'Отменена оформления заявки', reply_markup=replay.start_keyboard
-        )
-        return
-    await state.clear()
-    await message.answer(
-        'Отменена оформления заявки', reply_markup=replay.start_keyboard
-        )
-    await reset_to_start_command(message)
-
-
-@user_client_router.message(StateFilter('*'), Command('back'))
-@user_client_router.message(StateFilter('*'), F.text.casefold() == 'назад')
-async def back_cmd(message: types.Message, state: FSMContext):
-    """Обработка запроса назад."""
-
-    current_state = await state.get_state()
-    if current_state == RequestForService.type_service.state:
-        await message.answer(
-            'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
-            )
-        return
-    previous = None
-    for step in RequestForService.__all_states__:
-        if step.state == current_state:
-            await state.set_state(previous)
-            if previous.state == 'RequestForService:type_service':
-                keyboard = replay.client_keyboard
-            elif previous.state == 'RequestForService:type_machine':
-                keyboard = replay.client_service_keyboard
-            elif previous.state == 'RequestForService:image':
-                keyboard = replay.image_keyboard
-            elif previous.state == 'RequestForService:phone_number':
-                keyboard = replay.phone_keyboard
-            else:
-                keyboard = replay.del_keyboard
-            await message.answer(
-                f'Вы вернулись к прошлому шагу: '
-                f'{RequestForService.text[previous.state]}',
-                reply_markup=keyboard
-            )
-        previous = step
 
 
 @user_client_router.message(RequestForService.type_service, F.text)

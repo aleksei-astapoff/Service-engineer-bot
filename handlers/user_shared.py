@@ -1,6 +1,7 @@
 from aiogram import F, types, Router
 from aiogram.filters import CommandStart, Command, or_f
 
+
 from database.load_data import load_data
 from filters.chat_type import ChatTypeFilter
 

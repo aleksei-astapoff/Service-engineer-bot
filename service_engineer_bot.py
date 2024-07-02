@@ -11,6 +11,7 @@ from handlers.user_shared import user_shared
 from handlers.user_client import user_client_router
 from handlers.user_worker import user_worker_router
 from handlers.user_group import user_group_router
+from handlers.back_cancle_cmd import back_cancle_cmd_router
 from commands_bot.commands_bot_list import command_list
 from middelwares.db import DatabaseSessionMiddleware
 from utils import bot_telegram
@@ -19,16 +20,9 @@ load_dotenv()
 
 
 dp = Dispatcher()
+dp.message.middleware(DatabaseSessionMiddleware(session_pool=session_maker))
 
-user_client_router.message.middleware(
-    DatabaseSessionMiddleware(session_pool=session_maker)
-)
-
-user_worker_router.message.middleware(
-    DatabaseSessionMiddleware(session_pool=session_maker)
-)
-
-dp.include_routers(user_client_router, user_worker_router,
+dp.include_routers(back_cancle_cmd_router, user_client_router, user_worker_router,
                    user_group_router, user_shared)
 
 

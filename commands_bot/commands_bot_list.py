@@ -6,7 +6,7 @@ command_list = [
     BotCommand(command='about', description='О нас'),
     BotCommand(command='client_service', description='Услуги клиентам'),
     BotCommand(command='worker', description='Сотрудникам'),
-    # BotCommand(command='error_code', description='Коды ошибок'),
+    BotCommand(command='cancel', description='Сбросить состояние'),
 ]
 
 command_fsm = [
