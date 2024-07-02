@@ -75,6 +75,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
         await reset_to_start_command(message)
+        await message.answer(
+         'Отменена оформления заявки', reply_markup=replay.start_keyboard
+        )
         return
     await state.clear()
     await message.answer(
@@ -89,7 +92,7 @@ async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
     current_state = await state.get_state()
-    if current_state == RequestForService.type_service:
+    if current_state == RequestForService.type_service.state:
         await message.answer(
             'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"'
             )

@@ -2,10 +2,12 @@ import pandas as pd
 
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from database.engine import session_maker
 from database.models_worker import (FmiNumber, TupeEquipment,
                                     ProducerEquipment, Gost,
                                     ModelEquipment, CodeError)
+from utils import unification_code_error
 
 DICT_WORKER = {
     'type_equipment': TupeEquipment,
@@ -81,7 +83,7 @@ async def load_gost_in_db(table_data, session: AsyncSession):
                 gost_number=row.gost_number,
                 gost_shot_name=row.gost_shot_name
                 )
-        )).scalars().first()
+        )).scalar_one_or_none()
 
         if not gost:
             gost = Gost(
@@ -116,9 +118,8 @@ async def load_code_error_in_db(table_data, session: AsyncSession):
             else:
                 code_error = (await session.execute(
                     select(CodeError).filter_by(
-                        code_error=row.code_error,
+                        code_error=unification_code_error(row.code_error),
                         text_error=row.text_error,
-                        translation_text_error=row.translation_text_error,
                     )
                 )).scalars().first()
 
@@ -128,6 +129,16 @@ async def load_code_error_in_db(table_data, session: AsyncSession):
                         text_error=row.text_error,
                         translation_text_error=row.translation_text_error,
                     )
+                    session.add(code_error)
+                    await session.commit()
+                elif (
+                    code_error.text_error == row.text_error and
+                        code_error.translation_text_error !=
+                        row.translation_text_error
+                ):
+                    code_error.translation_text_error = (
+                        row.translation_text_error
+                        )
                     session.add(code_error)
                     await session.commit()
 
@@ -162,7 +173,7 @@ async def load_code_error_in_db(table_data, session: AsyncSession):
 async def load_data():
     """Загрузка данных из exce в базу данных."""
     df = pd.ExcelFile(
-        'database/data/engine_error_codes.xlsx',
+        'data/gost_and_error_codes.xlsx',
         )
     async with session_maker() as session:
         for sheet_name in df.sheet_names:

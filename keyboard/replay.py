@@ -85,29 +85,3 @@ worker_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True,
 )
-
-gost_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text='Данных нет'),
-        ]
-    ],
-)
-
-equiment_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text='Панель управления'),
-            KeyboardButton(text='Двигатель'),
-        ]
-    ],
-    resize_keyboard=True,
-)
-
-model_equiment = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-
-        ]
-    ]
-)

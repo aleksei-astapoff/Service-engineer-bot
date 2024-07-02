@@ -31,14 +31,6 @@ async def reset_to_start_command(message: types.Message):
         )
 
 
-def get_model_keyboard(type_equiment):
-    """Генерация клавиатуры для выбора модели оборудования."""
-
-    if type_equiment == 'Панель управления':
-        pass
-    pass
-
-
 def create_message(data):
     """Создание сообщения для заявки."""
 
@@ -51,5 +43,45 @@ def create_message(data):
     Тип оборудования: {data.get('type_machine')}
     Модель оборудования: {data.get('model_machine')}
     Серийный номер: {data.get('serial_number')}
+    '''
+    return text
+
+
+def unification_code_error(code_error):
+    code_error = str(code_error)
+    code_error = (
+        code_error.replace(' ', '').replace('-', '').replace('(', '')
+        .replace(')', '').replace('_', '').strip())
+    return code_error
+
+
+def create_message_error(code_error):
+    """Создание сообщения для заявки."""
+
+    type_equipment = ', '.join(
+        set(str(model_equipment.producer_equipment.tupe_equipment)
+            for model_equipment in code_error.model_equipments))
+
+    producer_equipment = ', '.join(
+        set(str(model_equipment.producer_equipment.producer_equipment)
+            for model_equipment in code_error.model_equipments))
+
+    model_equipment = ', '.join(
+        set(str(model_equipment.model_equipment)
+            for model_equipment in code_error.model_equipments))
+
+    fmi = ', \n'.join(
+        set(f'№ {fmi.fmi_number} - {fmi.text}' for fmi in code_error.fmi_numbers))
+
+    text = f'''
+    Данные по запросу:
+    \nТип оборудования: {type_equipment}
+    \nПроизводитель: {producer_equipment}
+    \nМодель оборудования: {model_equipment}
+    \nКод ошибки: {code_error.code_error}
+    \nОшибка: {code_error.text_error}
+    \nПеревод ошибки: {code_error.translation_text_error}
+    \nВозможные FMI:
+    \n{fmi if fmi else 'Нет данных о FMI в данном коде ошибки'}
     '''
     return text

@@ -24,6 +24,10 @@ user_client_router.message.middleware(
     DatabaseSessionMiddleware(session_pool=session_maker)
 )
 
+user_worker_router.message.middleware(
+    DatabaseSessionMiddleware(session_pool=session_maker)
+)
+
 dp.include_routers(user_client_router, user_worker_router,
                    user_group_router, user_shared)
 
