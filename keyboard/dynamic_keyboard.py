@@ -11,7 +11,7 @@ async def get_dynamic_keyboard(session: AsyncSession, data: str):
     tupe_request = data.get('tupe_request')
     type_equipments = data.get('keyboard_type_equipments', None)
     producer_equipments = data.get('keyboard_producer_equipments', None)
-    code_errors = data.get('code_errors')
+    # code_errors = data.get('code_errors')
     if tupe_request == 'гост':
         query = (
             await session.execute(select(Gost.gost_shot_name))
@@ -22,7 +22,7 @@ async def get_dynamic_keyboard(session: AsyncSession, data: str):
 
     elif tupe_request == 'коды ошибок' and not type_equipments:
         type_equipments = []
-        for code_error in code_errors:
+        for code_error in data.get('code_errors_type'):
             type_equipment = ', '.join(
                 set(str(model_equipment.producer_equipment.tupe_equipment)
                     for model_equipment in code_error.model_equipments))
@@ -34,7 +34,7 @@ async def get_dynamic_keyboard(session: AsyncSession, data: str):
 
     elif tupe_request == 'коды ошибок' and type_equipments and not producer_equipments:
         producer_equipments = []
-        for code_error in code_errors:
+        for code_error in data.get('code_errors_producer'):
             producer_equipment = ', '.join(
                 set(str(model_equipment.producer_equipment.producer_equipment)
                     for model_equipment in code_error.model_equipments))
@@ -44,9 +44,9 @@ async def get_dynamic_keyboard(session: AsyncSession, data: str):
             [KeyboardButton(text=row)] for row in producer_equipments
             ]
         keyboard = ReplyKeyboardMarkup(keyboard=button, resize_keyboard=True)
-    elif tupe_request == 'коды ошибок' and producer_equipments:
+    elif tupe_request == 'коды ошибок' and producer_equipments and type_equipments:
         model_equipments = []
-        for code_error in code_errors:
+        for code_error in data.get('code_errors_model'):
             model_equipment = ', '.join(
                 set(str(model_equipment.model_equipment)
                     for model_equipment in code_error.model_equipments))

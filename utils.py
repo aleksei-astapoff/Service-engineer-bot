@@ -30,6 +30,7 @@ async def reset_to_start_command(message: types.Message):
             scope=types.BotCommandScopeChat(chat_id=message.chat.id)
         )
 
+
 def create_message(data):
     """Создание сообщения для заявки."""
 
@@ -81,6 +82,6 @@ def create_message_error(code_error):
     \nОшибка: {code_error.text_error}
     \nПеревод ошибки: {code_error.translation_text_error}
     \nВозможные FMI:
-    \n{fmi}
+    \n{fmi if fmi else 'Нет данных о FMI в данном коде ошибки'}
     '''
     return text

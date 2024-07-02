@@ -16,30 +16,41 @@ user_worker_router = Router()
 user_worker_router.message.filter(ChatTypeFilter(['private']))
 
 
+async def answer_request(message: types.Message, state: FSMContext, list_code_errors):
+    """Ответ на заявку."""
+    code_error = list_code_errors.pop()
+    await message.answer(
+        create_message_error(code_error),
+        reply_markup=replay.start_keyboard)
+    await state.clear()
+    await reset_to_start_command(message)
+    return
+
+
 class RequestForHelpWorker(StatesGroup):
     """Заказ Услуги"""
 
     tupe_request = State()
+    code_error = State()
     tupe_equipment = State()
     producer_equipment = State()
     model_equipment = State()
-    code_error = State()
     gost_step = State()
 
     text = {
         'RequestForHelpWorker:tupe_request': 'Выберите тип запроса',
         'RequestForHelpWorker:tupe_equipment': 'Выберите тип оборудования',
+        'RequestForHelpWorker:producer_equipment': 'Выберите производителя оборудования',
         'RequestForHelpWorker:model_equipment': 'Выберите модель оборудования',
         'RequestForHelpWorker:code_error': 'Введите код ошибки',
-        'RequestForHelpWorker:gost_step': 'Выберите ГОСТ',
     }
 
     state_transitions = {
-        'RequestForHelpWorker:tupe_equipment': 'RequestForHelpWorker:tupe_request',
-        'RequestForHelpWorker:model_equipment': 'RequestForHelpWorker:tupe_equipment',
-        'RequestForHelpWorker:code_error': 'RequestForHelpWorker:model_equipment',
-        'RequestForHelpWorker:fmi_number': 'RequestForHelpWorker:code_error',
-        'RequestForHelpWorker:gost_step': 'RequestForHelpWorker:tupe_request',
+        'RequestForHelpWorker:tupe_equipment': 'RequestForHelpWorker:code_error',
+        'RequestForHelpWorker:producer_equipment': 'RequestForHelpWorker:tupe_equipment',
+        'RequestForHelpWorker:model_equipment': 'RequestForHelpWorker:producer_equipment',
+        'RequestForHelpWorker:code_error': 'RequestForHelpWorker:tupe_request', # работает
+        'RequestForHelpWorker:gost_step': 'RequestForHelpWorker:tupe_request', # работает
     }
 
 
@@ -69,6 +80,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
         await reset_to_start_command(message)
+        await message.answer(
+        'Отмена запроса', reply_markup=replay.start_keyboard
+        )
         return
     await state.clear()
     await message.answer(
@@ -76,9 +90,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
         )
     await reset_to_start_command(message)
 
-# @user_worker_router.message(StateFilter('*'), Command('back'))
-# @user_worker_router.message(StateFilter('*'), F.text.casefold() == 'назад')
-# async def back_cmd(message: types.Message, state: FSMContext):
+@user_worker_router.message(StateFilter('*'), Command('back'))
+@user_worker_router.message(StateFilter('*'), F.text.casefold() == 'назад')
+async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
     current_state = await state.get_state()
@@ -96,16 +110,16 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
     # Выбор клавиатуры в зависимости от предыдущего состояния
     if previous_state == 'RequestForHelpWorker:tupe_request':
         keyboard = replay.worker_keyboard
-    elif previous_state == 'RequestForHelpWorker:gost_step':
-        keyboard = replay.del_keyboard
     elif previous_state == 'RequestForHelpWorker:tupe_equipment':
-        keyboard = replay.tupe_equipment_keyboard
+        keyboard = (await state.get_data()).get('keyboard_type_equipments', replay.del_keyboard)
+    elif previous_state == 'RequestForHelpWorker:producer_equipment':
+        keyboard = (await state.get_data()).get('keyboard_producer_equipments', replay.del_keyboard)
     elif previous_state == 'RequestForHelpWorker:model_equipment':
-        keyboard = replay.model_equipment_keyboard
+        keyboard = (await state.get_data()).get('keyboard_model_equipment', replay.del_keyboard)
     elif previous_state == 'RequestForHelpWorker:code_error':
         keyboard = replay.del_keyboard
-    elif previous_state == 'RequestForHelpWorker:fmi_number':
-        keyboard = replay.del_keyboard
+    elif previous_state == 'RequestForHelpWorker:gost_step':
+        keyboard = (await state.get_data()).get('gost_keyboard', replay.del_keyboard)
     else:
         keyboard = replay.del_keyboard
 
@@ -127,21 +141,21 @@ async def type_service(
             )
     else:
         await state.update_data(tupe_request=message.text.casefold())
-    if message.text.casefold() == 'гост':
-        tupe_request = await state.get_data()
-        gost_keyboard = (
-            await dynamic_keyboard.get_dynamic_keyboard(session, tupe_request)
-            )
-        await message.answer(
-            'Выберите ГОСТ из списка.',
-            reply_markup=gost_keyboard
-            )
-        await state.update_data(gost_keyboard=gost_keyboard)
-        await state.set_state(RequestForHelpWorker.gost_step)
-    else:
-        await message.answer('Введите код ошибки.',
-                             reply_markup=replay.del_keyboard)
-        await state.set_state(RequestForHelpWorker.code_error)
+        if message.text.casefold() == 'гост':
+            tupe_request = await state.get_data()
+            gost_keyboard = (
+                await dynamic_keyboard.get_dynamic_keyboard(session, tupe_request)
+                )
+            await message.answer(
+                'Выберите ГОСТ из списка.',
+                reply_markup=gost_keyboard
+                )
+            await state.update_data(gost_keyboard=gost_keyboard)
+            await state.set_state(RequestForHelpWorker.gost_step)
+        else:
+            await message.answer('Введите код ошибки.',
+                                reply_markup=replay.del_keyboard)
+            await state.set_state(RequestForHelpWorker.code_error)
 
 
 @user_worker_router.message(RequestForHelpWorker.gost_step, F.text)
@@ -176,31 +190,31 @@ async def type_equipment(
 ):
     """Обработка запроса сотрудника тип оборудования."""
 
-    code_errors = await orm_get_code_error(session, message.text)
-    if len(code_errors) == 1:
-        code_error = code_errors.pop()
-        if not code_error.fmi_numbers or len(code_error.fmi_numbers) <= 1:
-            await message.answer(
-                create_message_error(code_error),
-                reply_markup=replay.start_keyboard)
-            await state.clear()
-            await reset_to_start_command(message)
-    elif not code_errors:
-        await message.answer('Такого кода ошибки нет в базе данных.')
+    data = await state.get_data()
+    if data.get('keyboard_type_equipments', None):
+        await state.update_data(keyboard_type_equipments=None)
+        data = await state.get_data()
+    list_code_errors = await orm_get_code_error(session, message.text)
+    if len(list_code_errors) == 1:
+        await answer_request(message, state, list_code_errors)
+    elif not list_code_errors:
+        await message.answer('Такого кода ошибки нет в базе данных.',
+                             reply_markup=replay.start_keyboard)
         await state.clear()
         await reset_to_start_command(message)
 
     else:
         type_equipments = []
-        for code_error in code_errors:
+        for code_error in list_code_errors:
             type_equipment = ', '.join(
                 set(str(model_equipment.producer_equipment.tupe_equipment)
                     for model_equipment in code_error.model_equipments))
             if type_equipment not in type_equipments:
                 type_equipments.append(type_equipment)
         if len(type_equipments) != 1:
-            await state.update_data(code_errors=code_errors)
+            await state.update_data(code_errors_type=list_code_errors)
             data = await state.get_data()
+
             keyboard_type_equipments = (
                 await dynamic_keyboard.get_dynamic_keyboard(session, data)
             )
@@ -220,6 +234,10 @@ async def tupe_equipment(
 ):
     """Обработка запроса сотрудника тип оборудования."""
 
+    data = await state.get_data()
+    if data.get('keyboard_producer_equipments', None):
+        await state.update_data(keyboard_producer_equipments=None)
+
     if message.text not in get_button_text(
      (await state.get_data()).get('keyboard_type_equipments')
     ):
@@ -229,7 +247,7 @@ async def tupe_equipment(
             )
     else:
         tupe_equipment_request = message.text
-        code_errors = (await state.get_data()).get('code_errors')
+        code_errors = (await state.get_data()).get('code_errors_type')
         list_code_errors = []
         for code_error in code_errors:
             for model_equipment in code_error.model_equipments:
@@ -243,15 +261,9 @@ async def tupe_equipment(
                 ):
                     list_code_errors.append(code_error)
         if len(list_code_errors) == 1:
-            code_error = list_code_errors.pop()
-            await message.answer(
-                create_message_error(code_error),
-                reply_markup=replay.start_keyboard
-                )
-            await state.clear()
-            await reset_to_start_command(message)
+            await answer_request(message, state, list_code_errors)
         else:
-            await state.update_data(code_errors=list_code_errors)
+            await state.update_data(code_errors_producer=list_code_errors)
             keyboard_producer_equipments = (
                 await dynamic_keyboard.get_dynamic_keyboard(
                     session, await state.get_data()
@@ -273,6 +285,9 @@ async def producer_equipment(
 ):
     """Обработка запроса сотрудника производитель оборудования."""
 
+    data = await state.get_data()
+    if data.get('keyboard_model_equipment', None):
+        await state.update_data(keyboard_model_equipment=None)
     if message.text not in get_button_text(
      (await state.get_data()).get('keyboard_producer_equipments')
     ):
@@ -282,7 +297,7 @@ async def producer_equipment(
             )
     else:
         producer_equipment_request = message.text
-        code_errors = (await state.get_data()).get('code_errors')
+        code_errors = (await state.get_data()).get('code_errors_producer')
         list_code_errors = []
         for code_error in code_errors:
             for model_equipment in code_error.model_equipments:
@@ -295,15 +310,9 @@ async def producer_equipment(
                 ):
                     list_code_errors.append(code_error)
         if len(list_code_errors) == 1:
-            code_error = list_code_errors.pop()
-            await message.answer(
-                create_message_error(code_error),
-                reply_markup=replay.start_keyboard
-                )
-            await state.clear()
-            await reset_to_start_command(message)
+            await answer_request(message, state, list_code_errors)
         else:
-            await state.update_data(code_errors=list_code_errors)
+            await state.update_data(code_errors_model=list_code_errors)
             keyboard_model_equipment = (
                 await dynamic_keyboard.get_dynamic_keyboard(
                     session, await state.get_data()
@@ -334,7 +343,7 @@ async def model_equipment(
             )
     else:
         model_equipment_request = message.text
-        code_errors = (await state.get_data()).get('code_errors')
+        code_errors = (await state.get_data()).get('code_errors_model')
         list_code_errors = []
         for code_error in code_errors:
             for model_equipment in code_error.model_equipments:
@@ -349,7 +358,8 @@ async def model_equipment(
         for code_error in list_code_errors:
             await message.answer(
                 create_message_error(code_error),
-                reply_markup=replay.start_keyboard
                 )
         await state.clear()
         await reset_to_start_command(message)
+        await message.answer('Запрос выполнен.',
+                             reply_markup=replay.start_keyboard)

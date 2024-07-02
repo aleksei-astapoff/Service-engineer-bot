@@ -75,6 +75,9 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
         await reset_to_start_command(message)
+        await message.answer(
+         'Отменена оформления заявки', reply_markup=replay.start_keyboard
+        )
         return
     await state.clear()
     await message.answer(
