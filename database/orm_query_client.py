@@ -134,3 +134,21 @@ async def orm_add_order(session: AsyncSession, data: dict):
             session.add(photo)
 
     await session.commit()
+
+    return order.id
+
+
+async def get_client_by_id(session: AsyncSession, telegram_profile_id: int):
+    """Получение клиента по ID."""
+    result = await session.execute(
+        select(Client).where(Client.telegram_profile_id == telegram_profile_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_orders_by_client(session: AsyncSession, client):
+    """Получение заявки по клиенту."""
+    result = await session.execute(
+        select(Order).where(Order.client_id == client.id)
+    )
+    return result.scalars().all()

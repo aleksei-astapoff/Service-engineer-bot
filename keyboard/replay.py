@@ -18,6 +18,16 @@ start_keyboard = ReplyKeyboardMarkup(
     input_field_placeholder='Что вас интересует?',
 )
 
+repeat_application_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='Да'),
+            KeyboardButton(text='Нет'),
+        ],
+    ],
+    resize_keyboard=True,
+    input_field_placeholder='Хотите повторить заявку?',
+    )
 
 client_keyboard = ReplyKeyboardMarkup(
     keyboard=[

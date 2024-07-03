@@ -8,7 +8,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.orm_query_client import orm_add_order
+from database.orm_query_client import (get_orders_by_client, orm_add_order,
+                                       get_client_by_id)
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay
 from commands_bot.commands_bot_list import command_fsm
@@ -33,6 +34,7 @@ class RequestForService(StatesGroup):
     image = State()
     phone_number = State()
     address_machine = State()
+    repeat_application = State()
 
     text = {
         'RequestForService:type_service': 'Выберите тип услуги.',
@@ -55,6 +57,7 @@ class RequestForService(StatesGroup):
         'RequestForService:image': 'RequestForService:serial_number',
         'RequestForService:phone_number': 'RequestForService:image',
         'RequestForService:address_machine': 'RequestForService:phone_number',
+        'RequestForService.repeat_application': 'RequestForService:',
     }
 
 
@@ -66,25 +69,74 @@ class RequestForService(StatesGroup):
                               (F.text.lower().regexp(
                                   r'.*техническ[аиоеуюыь]?.*'))))))
         ))
-async def service_cmd(message: types.Message, state: FSMContext):
+async def service_cmd(
+    message: types.Message, state: FSMContext, session: AsyncSession
+):
     """Обработка запроса клиента."""
 
     await bot_telegram.set_my_commands(
         commands=command_fsm,
         scope=types.BotCommandScopeChat(chat_id=message.chat.id)
         )
-    await state.set_state(RequestForService.type_service)
-    await message.answer(
-        'Что вас интересует? Для выхода воспльзутесь Меню',
-        reply_markup=replay.client_keyboard,
+    client = await get_client_by_id(session, message.from_user.id)
+
+    if client:
+        orders_by_client = await get_orders_by_client(session, client)
+        user_name = (
+            message.from_user.first_name if message.from_user.first_name
+            else message.from_user.username
         )
+        await message.answer(
+            f'Рад вас снова видеть {user_name}',
+        )
+
+        if orders_by_client:
+            list_machine = set()
+            for order in orders_by_client:
+                machine = order.type_machine + " " + order.serial_number
+                list_machine.add(machine)
+            text = "единиц" if len(orders_by_client) == 1 else "единицу"
+            await message.answer(
+                f'Ранее были заявки на {len(list_machine)} {text} техники.',
+            )
+            await message.answer(
+                'Хотите оформить повторную заявку?',
+                reply_markup=replay.repeat_application_keyboard,
+            )
+            await state.set_state(RequestForService.repeat_application)
+    else:
+        await state.set_state(RequestForService.type_service)
+        await message.answer(
+            'Что вас интересует? Для выхода воспльзутесь Меню',
+            reply_markup=replay.client_keyboard,
+            )
+
+
+@user_client_router.message(RequestForService.repeat_application, F.text)
+async def repeat_application(message: types.Message, state: FSMContext):
+    """Обработка запроса клиента повторная заявка."""
+
+    if message.text not in get_button_text(replay.repeat_application_keyboard):
+        await message.answer(
+            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
+             'или Меню для выхода')
+            )
+    if message.text.casefold() == 'нет':
+        await state.set_state(RequestForService.type_service)
+        await message.answer(
+            'Что вас интересует? Для выхода воспльзутесь Меню',
+            reply_markup=replay.client_keyboard,
+            )
 
 
 @user_client_router.message(RequestForService.type_service, F.text)
 async def type_service(message: types.Message, state: FSMContext):
     """Обработка запроса клиента тип услуги."""
 
-    if message.text not in get_button_text(replay.client_keyboard):
+    if (
+        message.text not in get_button_text(replay.client_keyboard)
+        or message.text.casefold() == 'нет'
+    ):
         await message.answer(
             ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
              'или Меню для выхода')
@@ -251,19 +303,8 @@ async def address_machine(
 
     data = await state.get_data()
 
-    await message.bot.send_message(
-        os.getenv('MANAGER_CHAT_ID'),
-        'Заявка на обработку')
-    photos = data.get('image', [])
-    for photo in photos:
-        await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
-
-    application = create_message(data)
-
-    await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
-
     try:
-        await orm_add_order(session, data)
+        order = await orm_add_order(session, data)
 
     except Exception as exc:
         text = f'''
@@ -272,7 +313,16 @@ async def address_machine(
         Обратитесь в службу поддержки.
         '''
         await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
+    await message.bot.send_message(
+        os.getenv('MANAGER_CHAT_ID'),
+        f'Заявка {"№ "+ str(order) if order else "" } на обработку')
+    photos = data.get('image', [])
+    for photo in photos:
+        await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
 
+    application = create_message(data)
+
+    await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
     await state.clear()
     await message.answer(
         'Заявка оформлена. Менеджер свяжется с вами в ближайшее время.',
