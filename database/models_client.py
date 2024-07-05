@@ -14,6 +14,26 @@ class BaseClient(DeclarativeBase):
     # DateTime(timezone=True), server_default=func.timezone('Europe/Moscow', func.now()))
 
 
+class Machine(BaseClient):
+    """Модель базы данных, оборудование."""
+
+    __tablename__ = 'machines'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('clients.id'), nullable=False
+        )
+    type_machine: Mapped[str] = mapped_column(String(50), nullable=False)
+    model_machine: Mapped[str] = mapped_column(String(50), nullable=False)
+    serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    orders = relationship("Order", back_populates="machine")
+    client = relationship("Client", back_populates="machines")
+
+    def __repr__(self):
+        return self.serial_number
+
+
 class Order(BaseClient):
     """Модель базы данных, заказы клиентов."""
 
@@ -22,22 +42,23 @@ class Order(BaseClient):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
     )
-    client_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('clients.id'), nullable=False
+
+    machine_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('machines.id'), nullable=False
         )
-
-    address_machine: Mapped[str] = mapped_column(String(150), nullable=False)
+    address_service: Mapped[str] = mapped_column(String(150), nullable=False)
     type_service: Mapped[str] = mapped_column(String(50), nullable=False)
-    type_machine: Mapped[str] = mapped_column(String(50), nullable=False)
-    model_machine: Mapped[str] = mapped_column(String(50), nullable=False)
-    serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
-    image: Mapped[str] = mapped_column(String(250), nullable=True)
+    images: Mapped[str] = mapped_column(String(250), nullable=True)
 
-    client = relationship(
-        "Client",
+    photos = relationship('Photo', back_populates='order')
+
+    machine = relationship(
+        "Machine",
         back_populates="orders"
     )
-    images = relationship('Photo', back_populates='order')
+
+    def __repr__(self):
+        return self.address_service
 
 
 class Client(BaseClient):
@@ -53,7 +74,7 @@ class Client(BaseClient):
     user_name: Mapped[str] = mapped_column(String(150), nullable=True)
     phone_number: Mapped[str] = mapped_column(String(11), nullable=True)
 
-    orders = relationship("Order", back_populates="client")
+    machines = relationship("Machine", back_populates="client")
 
     def __repr__(self) -> str:
         return self.full_name
@@ -73,7 +94,7 @@ class Photo(BaseClient):
 
     order = relationship(
         "Order",
-        back_populates="images"
+        back_populates="photos"
     )
 
     def __repr__(self) -> str:

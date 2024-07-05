@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 
-from database.models_client import Order, Client, Photo
+from database.models_client import Order, Client, Photo, Machine
 from constant import MEDIA_ROOT_DIR
 from utils import bot_telegram
 from dotenv import load_dotenv
@@ -20,11 +20,11 @@ async def ensure_dir(derictory: str):
         os.makedirs(derictory)
 
 
-async def save_photos(photos, client_id, order_id, address_machine):
+async def save_photos(photos, machine_id, order_id, address_service):
     """Сохранение фотографий в директории."""
     image_paths = {}
-    client_dir = os.path.join(MEDIA_ROOT_DIR, str(client_id))
-    order_dir = os.path.join(client_dir, str(order_id))
+    machine_dir = os.path.join(MEDIA_ROOT_DIR, str(machine_id))
+    order_dir = os.path.join(machine_dir, str(order_id))
 
     await ensure_dir(order_dir)
 
@@ -39,7 +39,7 @@ async def save_photos(photos, client_id, order_id, address_machine):
                     )
                 async with session.get(file_path) as response:
                     if response.status == 200:
-                        filename = f"{address_machine}_photo_{index}.jpg"
+                        filename = f"{address_service}_photo_{index}.jpg"
                         filepath = os.path.join(order_dir, filename)
                         async with aiofiles.open(filepath, 'wb') as file:
                             content = await response.read()
@@ -55,12 +55,12 @@ async def save_photos(photos, client_id, order_id, address_machine):
     return image_paths, order_dir
 
 
-async def session_save_client(session: AsyncSession, client: Client):
+async def session_save(session: AsyncSession, object):
     """Сохранение клиента в базу данных."""
 
-    session.add(client)
+    session.add(object)
     await session.commit()
-    await session.refresh(client)
+    await session.refresh(object)
 
 
 async def get_or_create_client(
@@ -82,13 +82,33 @@ async def get_or_create_client(
                 updated = True
 
         if updated:
-            await session_save_client(session, client)
+            await session_save(session, client)
 
     except NoResultFound:
         client = Client(telegram_profile_id=telegram_profile_id, **kwargs)
-        await session_save_client(session, client)
+        await session_save(session, client)
 
     return client
+
+
+async def get_or_create_machine(
+        session: AsyncSession, client_id: int, **kwargs
+        ):
+    """Получение или создание оборудования в базе данных."""
+    try:
+        result = await session.execute(
+            select(Machine).where(
+                Machine.client_id == client_id,
+                Machine.serial_number == kwargs['serial_number']
+                )
+            )
+        machine = result.scalar_one()
+
+    except NoResultFound:
+        machine = Machine(client_id=client_id, **kwargs)
+        await session_save(session, machine)
+
+    return machine
 
 
 async def orm_add_order(session: AsyncSession, data: dict):
@@ -102,14 +122,19 @@ async def orm_add_order(session: AsyncSession, data: dict):
         phone_number=data['phone_number']
     )
 
-    order = Order(
+    machine = await get_or_create_machine(
+        session,
         client_id=client.id,
-        type_service=data['type_service'],
         type_machine=data['type_machine'],
         model_machine=data['model_machine'],
-        serial_number=data['serial_number'],
-        image='Нет изображений',
-        address_machine=data['address_machine'],
+        serial_number=data['serial_number']
+    )
+
+    order = Order(
+        machine_id=machine.id,
+        type_service=data['type_service'],
+        address_service=data['address_service'],
+        images='Нет изображений',
     )
     session.add(order)
     await session.commit()
@@ -118,13 +143,13 @@ async def orm_add_order(session: AsyncSession, data: dict):
     if data.get('image') is not None:
         photos = data['image']
         image_paths, order_dir = await save_photos(
-            photos, client.id, order.id, order.address_machine
+            photos, machine.id, order.id, order.address_service
             )
         order_dir_str = (
             order_dir + '/ Загружено фото: ' + str(len(image_paths))
             )
 
-        order.image = order_dir_str
+        order.images = order_dir_str
         session.add(order)
 
         for image_path, photo_id in image_paths.items():
@@ -146,9 +171,9 @@ async def get_client_by_id(session: AsyncSession, telegram_profile_id: int):
     return result.scalar_one_or_none()
 
 
-async def get_orders_by_client(session: AsyncSession, client):
+async def get_client_machines(session: AsyncSession, client):
     """Получение заявки по клиенту."""
     result = await session.execute(
-        select(Order).where(Order.client_id == client.id)
+        select(Machine).where(Machine.client_id == client.id)
     )
     return result.scalars().all()

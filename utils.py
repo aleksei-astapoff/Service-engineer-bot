@@ -38,7 +38,7 @@ def create_message(data):
     Профиль: @{data.get('telegram_profile_id')}
     ФИО: {data.get('fist_name')} {data.get('last_name')}
     Номер телефона: +{data.get('phone_number')}
-    Адрес оборудования: {data.get('address_machine')}
+    Адрес оборудования: {data.get('address_service')}
     Тип услуги: {data.get('type_service')}
     Тип оборудования: {data.get('type_machine')}
     Модель оборудования: {data.get('model_machine')}

@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.orm_query_client import (get_orders_by_client, orm_add_order,
+from database.orm_query_client import (get_client_machines, orm_add_order,
                                        get_client_by_id)
 from filters.chat_type import ChatTypeFilter
 from keyboard import replay
@@ -33,7 +33,7 @@ class RequestForService(StatesGroup):
     serial_number = State()
     image = State()
     phone_number = State()
-    address_machine = State()
+    address_service = State()
     repeat_application = State()
 
     text = {
@@ -47,7 +47,7 @@ class RequestForService(StatesGroup):
         'Добавьте фото оборудования не более 5 изображений',
 
         'RequestForService:phone_number': 'Введите ваш номер телефона.',
-        'RequestForService:address_machine': 'Введите ваш адрес.',
+        'RequestForService:address_service': 'Введите ваш адрес.',
     }
 
     state_transitions = {
@@ -56,7 +56,7 @@ class RequestForService(StatesGroup):
         'RequestForService:serial_number': 'RequestForService:model_machine',
         'RequestForService:image': 'RequestForService:serial_number',
         'RequestForService:phone_number': 'RequestForService:image',
-        'RequestForService:address_machine': 'RequestForService:phone_number',
+        'RequestForService:address_service': 'RequestForService:phone_number',
         'RequestForService.repeat_application': 'RequestForService:',
     }
 
@@ -81,7 +81,7 @@ async def service_cmd(
     client = await get_client_by_id(session, message.from_user.id)
 
     if client:
-        orders_by_client = await get_orders_by_client(session, client)
+        machines_by_client = await get_client_machines(session, client)
         user_name = (
             message.from_user.first_name if message.from_user.first_name
             else message.from_user.username
@@ -90,12 +90,12 @@ async def service_cmd(
             f'Рад вас снова видеть {user_name}',
         )
 
-        if orders_by_client:
+        if machines_by_client:
             list_machine = set()
-            for order in orders_by_client:
-                machine = order.type_machine + " " + order.serial_number
+            for machine in machines_by_client:
+                machine = machine.type_machine + " " + machine.serial_number
                 list_machine.add(machine)
-            text = "единиц" if len(orders_by_client) == 1 else "единицу"
+            text = "единицу" if len(machines_by_client) == 1 else "единиц"
             await message.answer(
                 f'Ранее были заявки на {len(list_machine)} {text} техники.',
             )
@@ -290,16 +290,16 @@ async def phone_number(message: types.Message, state: FSMContext):
         reply_markup=replay.del_keyboard,
         input_field_placeholder='Город, улица, номер дом или участка'
     )
-    await state.set_state(RequestForService.address_machine)
+    await state.set_state(RequestForService.address_service)
 
 
-@user_client_router.message(RequestForService.address_machine, F.text)
-async def address_machine(
+@user_client_router.message(RequestForService.address_service, F.text)
+async def address_service(
         message: types.Message, state: FSMContext, session: AsyncSession
         ):
     """Обработка запроса клиента сохранение адреса оборудования."""
 
-    await state.update_data(address_machine=message.text)
+    await state.update_data(address_service=message.text)
 
     data = await state.get_data()
 
@@ -307,12 +307,15 @@ async def address_machine(
         order = await orm_add_order(session, data)
 
     except Exception as exc:
+        order = None
         text = f'''
+        Заявка не сохранена!
         Ошибка при сохранении заявки в Базу данных:
         {str(exc)}
         Обратитесь в службу поддержки.
         '''
         await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
+
     await message.bot.send_message(
         os.getenv('MANAGER_CHAT_ID'),
         f'Заявка {"№ "+ str(order) if order else "" } на обработку')
