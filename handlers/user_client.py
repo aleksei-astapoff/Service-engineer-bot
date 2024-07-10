@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from aiogram import F, types, Router
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -24,6 +25,47 @@ user_client_router = Router()
 user_client_router.message.filter(ChatTypeFilter(['private']))
 
 
+async def process_order(
+        message: types.Message, state: FSMContext, session: AsyncSession):
+
+    data = await state.get_data()
+
+    try:
+        order = await orm_add_order(session, data)
+
+    except Exception as exc:
+        order = None
+        text = f'''
+        Заявка не сохранена!
+        Ошибка при сохранении заявки в Базу данных:
+        {str(exc)}
+        Обратитесь в службу поддержки.
+        '''
+        await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
+
+    await message.bot.send_message(
+        os.getenv('MANAGER_CHAT_ID'),
+        f'Заявка {"№ "+ str(order) if order else "" } на обработку')
+    if data.get('repeat_application') is True:
+        folder_path = data.get('machines_by_client').images
+        text = f'Повторная заявка. Фото оборудования в папке: {folder_path}'
+        await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
+    else:
+        photos = data.get('image', [])
+        for photo in photos:
+            await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
+
+    application = create_message(data)
+
+    await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
+    await state.clear()
+    await message.answer(
+        'Заявка оформлена. Менеджер свяжется с вами в ближайшее время.',
+        reply_markup=replay.start_keyboard
+    )
+    await reset_to_start_command(message)
+
+
 class RequestForService(StatesGroup):
     """Заказ Услуги"""
 
@@ -35,6 +77,7 @@ class RequestForService(StatesGroup):
     phone_number = State()
     address_service = State()
     repeat_application = State()
+    repeat_application_step_2 = State()
 
     text = {
         'RequestForService:type_service': 'Выберите тип услуги.',
@@ -91,18 +134,15 @@ async def service_cmd(
         )
 
         if machines_by_client:
-            list_machine = set()
-            for machine in machines_by_client:
-                machine = machine.type_machine + " " + machine.serial_number
-                list_machine.add(machine)
-            text = "единицу" if len(machines_by_client) == 1 else "единиц"
             await message.answer(
-                f'Ранее были заявки на {len(list_machine)} {text} техники.',
+                f'Колличество оборудования в базе: {len(machines_by_client)}',
             )
             await message.answer(
                 'Хотите оформить повторную заявку?',
                 reply_markup=replay.repeat_application_keyboard,
             )
+            await state.update_data(machines_by_client=machines_by_client,
+                                    client=client)
             await state.set_state(RequestForService.repeat_application)
     else:
         await state.set_state(RequestForService.type_service)
@@ -127,11 +167,53 @@ async def repeat_application(message: types.Message, state: FSMContext):
             'Что вас интересует? Для выхода воспльзутесь Меню',
             reply_markup=replay.client_keyboard,
             )
+    else:
+        machines_by_client = (await state.get_data()).get('machines_by_client')
+        list_machine = []
+        for machine in machines_by_client:
+            list_machine.append(machine.serial_number)
+        button = [[KeyboardButton(text=row)] for row in list_machine]
+        keyboard_list_machine = ReplyKeyboardMarkup(
+            keyboard=button, resize_keyboard=True
+            )
+        await message.answer(
+             'Выберите серийный оборудование для повторной заявки.',
+             reply_markup=keyboard_list_machine
+         )
+        await state.update_data(keyboard_list_machine=keyboard_list_machine)
+        await state.set_state(RequestForService.repeat_application_step_2)
+
+
+@user_client_router.message(RequestForService.repeat_application_step_2,
+                            F.text)
+async def repeat_application_step_2(message: types.Message, state: FSMContext):
+    """Обработка запроса клиента выбор оборудования."""
+
+    if message.text not in get_button_text(
+            (await state.get_data()).get('keyboard_list_machine')):
+        await message.answer(
+            ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
+             'или Меню для выхода')
+            )
+    else:
+        machines_by_client = (await state.get_data()).get('machines_by_client')
+        for machine in machines_by_client:
+            if message.text == machine.serial_number:
+                await state.update_data(machines_by_client=machine)
+                break
+        await message.answer(
+            'Что вас интересует? Для выхода воспльзутесь Меню',
+            reply_markup=replay.client_keyboard,
+            )
+        await state.set_state(RequestForService.type_service)
 
 
 @user_client_router.message(RequestForService.type_service, F.text)
-async def type_service(message: types.Message, state: FSMContext):
+async def type_service(
+    message: types.Message, state: FSMContext, session: AsyncSession
+):
     """Обработка запроса клиента тип услуги."""
+    data = (await state.get_data()).get('keyboard_list_machine', None)
 
     if (
         message.text not in get_button_text(replay.client_keyboard)
@@ -141,6 +223,10 @@ async def type_service(message: types.Message, state: FSMContext):
             ('Пожалуйста, воспользуйтесь кнопками клавиатуры '
              'или Меню для выхода')
             )
+    elif data:
+        await state.update_data(type_service=message.text,
+                                repeat_application=True)
+        await process_order(message, state, session)
     else:
         await state.update_data(type_service=message.text)
         await message.answer('Выберите тип установки.',
@@ -300,35 +386,4 @@ async def address_service(
     """Обработка запроса клиента сохранение адреса оборудования."""
 
     await state.update_data(address_service=message.text)
-
-    data = await state.get_data()
-
-    try:
-        order = await orm_add_order(session, data)
-
-    except Exception as exc:
-        order = None
-        text = f'''
-        Заявка не сохранена!
-        Ошибка при сохранении заявки в Базу данных:
-        {str(exc)}
-        Обратитесь в службу поддержки.
-        '''
-        await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), text)
-
-    await message.bot.send_message(
-        os.getenv('MANAGER_CHAT_ID'),
-        f'Заявка {"№ "+ str(order) if order else "" } на обработку')
-    photos = data.get('image', [])
-    for photo in photos:
-        await message.bot.send_photo(os.getenv('MANAGER_CHAT_ID'), photo)
-
-    application = create_message(data)
-
-    await message.bot.send_message(os.getenv('MANAGER_CHAT_ID'), application)
-    await state.clear()
-    await message.answer(
-        'Заявка оформлена. Менеджер свяжется с вами в ближайшее время.',
-        reply_markup=replay.start_keyboard
-    )
-    await reset_to_start_command(message)
+    await process_order(message, state, session)

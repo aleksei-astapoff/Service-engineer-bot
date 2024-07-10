@@ -20,13 +20,15 @@ async def ensure_dir(derictory: str):
         os.makedirs(derictory)
 
 
-async def save_photos(photos, machine_id, order_id, address_service):
+async def save_photos(photos, machine, client, address_service):
     """Сохранение фотографий в директории."""
     image_paths = {}
-    machine_dir = os.path.join(MEDIA_ROOT_DIR, str(machine_id))
-    order_dir = os.path.join(machine_dir, str(order_id))
+    client_dir = os.path.join(MEDIA_ROOT_DIR, str(
+        client.full_name if client.full_name else client.user_name
+        ))
+    machine_dir = os.path.join(client_dir, str(machine.serial_number))
 
-    await ensure_dir(order_dir)
+    await ensure_dir(machine_dir)
 
     async with aiohttp.ClientSession() as session:
         for index, photo_id in enumerate(photos, start=1):
@@ -40,7 +42,7 @@ async def save_photos(photos, machine_id, order_id, address_service):
                 async with session.get(file_path) as response:
                     if response.status == 200:
                         filename = f"{address_service}_photo_{index}.jpg"
-                        filepath = os.path.join(order_dir, filename)
+                        filepath = os.path.join(machine_dir, filename)
                         async with aiofiles.open(filepath, 'wb') as file:
                             content = await response.read()
                             await file.write(content)
@@ -52,7 +54,7 @@ async def save_photos(photos, machine_id, order_id, address_service):
                             + response.status)
             except Exception as exc:
                 print(f"Ошибка загрузки фото {photo_id}: {exc}")
-    return image_paths, order_dir
+    return image_paths, machine_dir
 
 
 async def session_save(session: AsyncSession, object):
@@ -113,28 +115,33 @@ async def get_or_create_machine(
 
 async def orm_add_order(session: AsyncSession, data: dict):
     """Добавление заявки в базу данных."""
-
-    client = await get_or_create_client(
-        session,
-        telegram_profile_id=int(data['telegram_profile_id']),
-        full_name=f'{data["fist_name"]} {data["last_name"]}',
-        user_name=data['telegram_profile_username'],
-        phone_number=data['phone_number']
-    )
-
-    machine = await get_or_create_machine(
-        session,
-        client_id=client.id,
-        type_machine=data['type_machine'],
-        model_machine=data['model_machine'],
-        serial_number=data['serial_number']
-    )
+    if data.get('client') is None:
+        client = await get_or_create_client(
+            session,
+            telegram_profile_id=int(data['telegram_profile_id']),
+            full_name=f'{data["fist_name"]} {data["last_name"]}',
+            user_name=data['telegram_profile_username'],
+            phone_number=data['phone_number']
+        )
+    else:
+        client = data['client']
+    if data.get('machines_by_client') is None:
+        machine = await get_or_create_machine(
+            session,
+            client_id=client.id,
+            type_machine=data['type_machine'],
+            model_machine=data['model_machine'],
+            serial_number=data['serial_number'],
+            address_machine=data['address_service'],
+            images='Нет изображений',
+        )
+    else:
+        machine = data['machines_by_client']
 
     order = Order(
         machine_id=machine.id,
         type_service=data['type_service'],
-        address_service=data['address_service'],
-        images='Нет изображений',
+        address_service=machine.address_machine,
     )
     session.add(order)
     await session.commit()
@@ -142,19 +149,19 @@ async def orm_add_order(session: AsyncSession, data: dict):
 
     if data.get('image') is not None:
         photos = data['image']
-        image_paths, order_dir = await save_photos(
-            photos, machine.id, order.id, order.address_service
+        image_paths, machine_dir = await save_photos(
+            photos, machine, client, order.address_service
             )
-        order_dir_str = (
-            order_dir + '/ Загружено фото: ' + str(len(image_paths))
+        machine_dir_str = (
+            machine_dir + '/ Загружено фото: ' + str(len(image_paths))
             )
 
-        order.images = order_dir_str
-        session.add(order)
+        machine.images = machine_dir_str
+        session.add(machine)
 
         for image_path, photo_id in image_paths.items():
             photo = Photo(
-                order_id=order.id, file_path=image_path, photo_id=photo_id
+                machine_id=machine.id, file_path=image_path, photo_id=photo_id
                 )
             session.add(photo)
 

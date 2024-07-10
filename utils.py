@@ -35,14 +35,26 @@ def create_message(data):
     """Создание сообщения для заявки."""
 
     text = f'''
-    Профиль: @{data.get('telegram_profile_id')}
-    ФИО: {data.get('fist_name')} {data.get('last_name')}
-    Номер телефона: +{data.get('phone_number')}
-    Адрес оборудования: {data.get('address_service')}
+    Профиль: @{data.get(
+        'telegram_profile_id', data['client'].telegram_profile_id
+        )}
+    ФИО: {data.get('fist_name', '')} {data.get(
+        'last_name', data['client'].full_name
+        )}
+    Номер телефона: +{data.get('phone_number', data['client'].phone_number)}
+    Адрес оборудования: {data.get(
+        'address_service', data['machines_by_client'].address_machine
+        )}
     Тип услуги: {data.get('type_service')}
-    Тип оборудования: {data.get('type_machine')}
-    Модель оборудования: {data.get('model_machine')}
-    Серийный номер: {data.get('serial_number')}
+    Тип оборудования: {data.get(
+        'type_machine', data['machines_by_client'].type_machine
+        )}
+    Модель оборудования: {data.get(
+        'model_machine',data['machines_by_client'].model_machine
+        )}
+    Серийный номер: {data.get(
+        'serial_number', data['machines_by_client'].serial_number
+        )}
     '''
     return text
 
@@ -71,7 +83,8 @@ def create_message_error(code_error):
             for model_equipment in code_error.model_equipments))
 
     fmi = ', \n'.join(
-        set(f'№ {fmi.fmi_number} - {fmi.text}' for fmi in code_error.fmi_numbers))
+        set(f'№ {fmi.fmi_number} - {fmi.text}'
+            for fmi in code_error.fmi_numbers))
 
     text = f'''
     Данные по запросу:

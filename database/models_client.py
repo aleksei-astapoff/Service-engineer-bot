@@ -26,9 +26,13 @@ class Machine(BaseClient):
     type_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     model_machine: Mapped[str] = mapped_column(String(50), nullable=False)
     serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    address_machine: Mapped[str] = mapped_column(String(150), nullable=False)
+    images: Mapped[str] = mapped_column(String(250), nullable=True)
 
-    orders = relationship("Order", back_populates="machine")
-    client = relationship("Client", back_populates="machines")
+    photos = relationship('Photo', back_populates='machine')
+
+    orders = relationship("Order", back_populates='machine')
+    client = relationship("Client", back_populates='machines')
 
     def __repr__(self):
         return self.serial_number
@@ -48,9 +52,6 @@ class Order(BaseClient):
         )
     address_service: Mapped[str] = mapped_column(String(150), nullable=False)
     type_service: Mapped[str] = mapped_column(String(50), nullable=False)
-    images: Mapped[str] = mapped_column(String(250), nullable=True)
-
-    photos = relationship('Photo', back_populates='order')
 
     machine = relationship(
         "Machine",
@@ -86,14 +87,14 @@ class Photo(BaseClient):
     __tablename__ = 'photos'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    order_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('orders.id'), nullable=False
+    machine_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('machines.id'), nullable=False
         )
     file_path: Mapped[str] = mapped_column(String(250), nullable=False)
     photo_id: Mapped[str] = mapped_column(String(250), nullable=False)
 
-    order = relationship(
-        "Order",
+    machine = relationship(
+        "Machine",
         back_populates="photos"
     )
 
