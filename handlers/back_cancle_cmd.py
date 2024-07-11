@@ -40,9 +40,12 @@ async def cancel_cmd(message: types.Message, state: FSMContext):
 async def back_cmd(message: types.Message, state: FSMContext):
     """Обработка запроса назад."""
 
+    data = await state.get_data()
+
     # Определение текущего состояния
     current_state = await state.get_state()
-    if not current_state or current_state in fist_steps:
+    if (not current_state or current_state in fist_steps
+            and (data.get('keyboard_list_machine') is None)):
         await message.answer(
             'Предыдущего шага нет. Воспользуйтесь меню: "Отмена"',
         )
@@ -53,7 +56,6 @@ async def back_cmd(message: types.Message, state: FSMContext):
 
     if previous_state:
         await state.set_state(previous_state)
-        data = await state.get_data()
         if previous_state == 'RequestForHelpWorker:tupe_request':
             keyboard = replay.worker_keyboard
         elif previous_state == 'RequestForHelpWorker:tupe_equipment':
@@ -88,7 +90,8 @@ async def back_cmd(message: types.Message, state: FSMContext):
     if previous_state:
         await state.set_state(previous_state)
         data = await state.get_data()
-        if previous_state == 'RequestForService:type_service':
+        if (previous_state == 'RequestForService:type_service'
+                and (data.get('keyboard_list_machine') is None)):
             keyboard = replay.client_keyboard
         elif previous_state == 'RequestForService:type_machine':
             keyboard = replay.client_service_keyboard
@@ -100,6 +103,11 @@ async def back_cmd(message: types.Message, state: FSMContext):
             keyboard = replay.image_keyboard
         elif previous_state == 'RequestForService:phone_number':
             keyboard = replay.phone_keyboard
+        elif previous_state == 'RequestForService:repeat_application':
+            keyboard = replay.repeat_application_keyboard
+        elif (previous_state == 'RequestForService:repeat_application_step_2'
+                and (data.get('keyboard_list_machine') is not None)):
+            keyboard = data.get('keyboard_list_machine')
         else:
             keyboard = replay.del_keyboard
 

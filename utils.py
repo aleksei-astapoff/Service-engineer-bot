@@ -34,26 +34,35 @@ async def reset_to_start_command(message: types.Message):
 def create_message(data):
     """Создание сообщения для заявки."""
 
+    client = data.get('client')
+    machines_by_client = data.get('machines_by_client')
+
     text = f'''
     Профиль: @{data.get(
-        'telegram_profile_id', data['client'].telegram_profile_id
+        'telegram_profile_id', client.telegram_profile_id if client else ''
         )}
-    ФИО: {data.get('fist_name', '')} {data.get(
-        'last_name', data['client'].full_name
+    ФИО: {data.get('first_name', '')} {data.get(
+        'last_name', client.full_name if client else ''
         )}
-    Номер телефона: +{data.get('phone_number', data['client'].phone_number)}
+    Номер телефона: +{data.get(
+        'phone_number', client.phone_number if client else ''
+        )}
     Адрес оборудования: {data.get(
-        'address_service', data['machines_by_client'].address_machine
+        'address_service', machines_by_client.address_machine
+        if machines_by_client else ''
         )}
-    Тип услуги: {data.get('type_service')}
+    Тип услуги: {data.get('type_service', '')}
     Тип оборудования: {data.get(
-        'type_machine', data['machines_by_client'].type_machine
+        'type_machine', machines_by_client.type_machine
+        if machines_by_client else ''
         )}
     Модель оборудования: {data.get(
-        'model_machine',data['machines_by_client'].model_machine
+        'model_machine', machines_by_client.model_machine
+        if machines_by_client else ''
         )}
     Серийный номер: {data.get(
-        'serial_number', data['machines_by_client'].serial_number
+        'serial_number', machines_by_client.serial_number
+        if machines_by_client else ''
         )}
     '''
     return text

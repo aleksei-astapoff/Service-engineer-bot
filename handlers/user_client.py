@@ -25,6 +25,55 @@ user_client_router = Router()
 user_client_router.message.filter(ChatTypeFilter(['private']))
 
 
+class RequestForService(StatesGroup):
+    """Заказ Услуги"""
+
+    type_service = State()
+    type_machine = State()
+    model_machine = State()
+    serial_number = State()
+    image = State()
+    phone_number = State()
+    address_service = State()
+    repeat_application = State()
+    repeat_application_step_2 = State()
+
+    text = {
+        'RequestForService:type_service': 'Выберите тип услуги.',
+        'RequestForService:type_machine': 'Введите тип оборудования.',
+        'RequestForService:model_machine': 'Введите модель оборудования.',
+
+        'RequestForService:serial_number':
+        'Введите серийный номер оборудования.',
+
+        'RequestForService:image':
+        'Добавьте фото оборудования не более 5 изображений',
+
+        'RequestForService:phone_number': 'Введите ваш номер телефона.',
+        'RequestForService:address_service': 'Введите ваш адрес.',
+        'RequestForService:repeat_application': 'Оформить повторную заявку?',
+
+        'RequestForService:repeat_application_step_2':
+        'Выберите Оборудование для повторной заявки',
+    }
+
+    state_transitions = {
+        'RequestForService:type_machine': 'RequestForService:type_service',
+        'RequestForService:model_machine': 'RequestForService:type_machine',
+        'RequestForService:serial_number': 'RequestForService:model_machine',
+        'RequestForService:image': 'RequestForService:serial_number',
+        'RequestForService:phone_number': 'RequestForService:image',
+        'RequestForService:address_service': 'RequestForService:phone_number',
+        'RequestForService:repeat_application': 'RequestForService:',
+
+        'RequestForService:repeat_application_step_2':
+        'RequestForService:repeat_application',
+
+        'RequestForService:type_service':
+        'RequestForService:repeat_application_step_2',
+    }
+
+
 async def process_order(
         message: types.Message, state: FSMContext, session: AsyncSession):
 
@@ -66,44 +115,6 @@ async def process_order(
     await reset_to_start_command(message)
 
 
-class RequestForService(StatesGroup):
-    """Заказ Услуги"""
-
-    type_service = State()
-    type_machine = State()
-    model_machine = State()
-    serial_number = State()
-    image = State()
-    phone_number = State()
-    address_service = State()
-    repeat_application = State()
-    repeat_application_step_2 = State()
-
-    text = {
-        'RequestForService:type_service': 'Выберите тип услуги.',
-        'RequestForService:type_machine': 'Введите тип оборудования.',
-        'RequestForService:model_machine': 'Введите модель оборудования.',
-        'RequestForService:serial_number':
-        'Введите серийный номер оборудования.',
-
-        'RequestForService:image':
-        'Добавьте фото оборудования не более 5 изображений',
-
-        'RequestForService:phone_number': 'Введите ваш номер телефона.',
-        'RequestForService:address_service': 'Введите ваш адрес.',
-    }
-
-    state_transitions = {
-        'RequestForService:type_machine': 'RequestForService:type_service',
-        'RequestForService:model_machine': 'RequestForService:type_machine',
-        'RequestForService:serial_number': 'RequestForService:model_machine',
-        'RequestForService:image': 'RequestForService:serial_number',
-        'RequestForService:phone_number': 'RequestForService:image',
-        'RequestForService:address_service': 'RequestForService:phone_number',
-        'RequestForService.repeat_application': 'RequestForService:',
-    }
-
-
 @user_client_router.message(StateFilter(None),
                             or_f(Command('client_service'),
                             ((F.text.lower().contains('клиенту') | (
@@ -141,7 +152,7 @@ async def service_cmd(
                 'Хотите оформить повторную заявку?',
                 reply_markup=replay.repeat_application_keyboard,
             )
-            await state.update_data(machines_by_client=machines_by_client,
+            await state.update_data(machines_by_client_all=machines_by_client,
                                     client=client)
             await state.set_state(RequestForService.repeat_application)
     else:
@@ -162,16 +173,24 @@ async def repeat_application(message: types.Message, state: FSMContext):
              'или Меню для выхода')
             )
     if message.text.casefold() == 'нет':
+        await state.set_data({})
+        data = await state.get_data()
+        print(data)
         await state.set_state(RequestForService.type_service)
         await message.answer(
             'Что вас интересует? Для выхода воспльзутесь Меню',
             reply_markup=replay.client_keyboard,
             )
     else:
-        machines_by_client = (await state.get_data()).get('machines_by_client')
+        machines_by_client = (
+            await state.get_data()
+            ).get('machines_by_client_all')
         list_machine = []
         for machine in machines_by_client:
-            list_machine.append(machine.serial_number)
+            text = f'''
+{machine.type_machine} {machine.model_machine} {machine.serial_number}
+            '''
+            list_machine.append(text)
         button = [[KeyboardButton(text=row)] for row in list_machine]
         keyboard_list_machine = ReplyKeyboardMarkup(
             keyboard=button, resize_keyboard=True
@@ -196,7 +215,9 @@ async def repeat_application_step_2(message: types.Message, state: FSMContext):
              'или Меню для выхода')
             )
     else:
-        machines_by_client = (await state.get_data()).get('machines_by_client')
+        machines_by_client = (
+            await state.get_data()
+            ).get('machines_by_client_all')
         for machine in machines_by_client:
             if message.text == machine.serial_number:
                 await state.update_data(machines_by_client=machine)
