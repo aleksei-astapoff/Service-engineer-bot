@@ -187,9 +187,11 @@ async def repeat_application(message: types.Message, state: FSMContext):
             ).get('machines_by_client_all')
         list_machine = []
         for machine in machines_by_client:
-            text = f'''
-{machine.type_machine} {machine.model_machine} {machine.serial_number}
-            '''
+            text = (
+                f'{machine.type_machine} '
+                f'{machine.model_machine} '
+                f'{machine.serial_number}'
+                )
             list_machine.append(text)
         button = [[KeyboardButton(text=row)] for row in list_machine]
         keyboard_list_machine = ReplyKeyboardMarkup(
@@ -219,7 +221,7 @@ async def repeat_application_step_2(message: types.Message, state: FSMContext):
             await state.get_data()
             ).get('machines_by_client_all')
         for machine in machines_by_client:
-            if message.text == machine.serial_number:
+            if machine.serial_number in message.text:
                 await state.update_data(machines_by_client=machine)
                 break
         await message.answer(
