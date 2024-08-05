@@ -18,4 +18,3 @@
 - Docker
 - PostgreSQL
 - Sqlite
-
