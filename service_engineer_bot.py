@@ -57,8 +57,6 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
-    # dp.update.middleware(DatabaseSessionMiddleware(session_pool=session_maker))
-
     await bot_telegram.delete_webhook(drop_pending_updates=True)
     await bot_telegram.set_my_commands(
         commands=command_list, scope=types.BotCommandScopeAllPrivateChats()
