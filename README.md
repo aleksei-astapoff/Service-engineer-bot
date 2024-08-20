@@ -18,3 +18,4 @@
 - Docker
 - PostgreSQL
 - Sqlite
+- Pandas
