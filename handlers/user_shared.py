@@ -54,7 +54,7 @@ async def update_code_error_in_db(message: types.Message):
     """Обновление кодов ошибок в базе данных."""
     try:
         await load_data()
-        await message.answer('Обновлено')
+        await message.answer('Обновление БД прошло успешно!')
     except Exception as exс:
         await message.answer(f'Произошла ошибка: {exс}')
 
